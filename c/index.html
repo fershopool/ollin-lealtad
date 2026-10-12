@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Tu tarjeta Quetzalitos</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="../estilo.css">
+</head>
+<body>
+<main>
+  <h1>Quetzalitos</h1>
+
+  <p id="estado" aria-live="polite" class="oculto"></p>
+
+  <section id="sin-tarjeta" class="tarjeta">
+    <p>Escanea el QR de la cajera cuando compres tu postre.</p>
+  </section>
+
+  <section id="tarjeta" class="tarjeta oculto">
+    <div id="sellos" class="sellos"></div>
+    <p id="texto" aria-live="polite"></p>
+
+    <button id="btn-premio" class="btn btn-grande oculto" type="button">Canjear mi postre gratis</button>
+
+    <div id="bloque-canje" class="oculto">
+      <p class="centro"><strong>Díselo a la cajera</strong></p>
+      <p id="codigo-canje" class="codigo"></p>
+      <p id="cuenta-canje" class="centro"></p>
+    </div>
+  </section>
+
+  <p class="letra-chica">
+    Tu tarjeta vive en este teléfono. No pedimos nombre, correo ni otros datos personales.
+  </p>
+</main>
+
+<script src="../config.js"></script>
+<script src="../lib.js"></script>
+<script src="c.js"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+body { background: #F1EBD0; color: #34241C; margin: 0; font-size: 18px; }
+main { padding: 16px; max-width: 960px; margin: 0 auto; }
+h1 { color: #2E6458; font-size: 1.6rem; margin: 8px 0 16px; }
+label { display: block; font-weight: 700; margin: 12px 0 6px; }
+.campo { display: block; width: 100%; box-sizing: border-box; min-height: 64px; font-size: 1.2rem; padding: 12px; border: 2px solid #34241C; border-radius: 12px; background: #fff; color: #34241C; margin-bottom: 12px; }
+#ver, #periodo { min-height: 64px; }
+#ver { width: 100%; }
+.panel-tabla { overflow-x: auto; margin: 16px 0 8px; }
+.panel-tabla table { border-collapse: collapse; min-width: 640px; width: 100%; background: #fff; }
+.panel-tabla th { background: #2E6458; color: #F1EBD0; }
+.panel-tabla th, .panel-tabla td { border-bottom: 1px solid #34241C; padding: 12px 10px; text-align: left; white-space: nowrap; }
+.panel-tabla td:nth-child(n+3) { text-align: right; }
+.panel-tabla .total td { font-weight: 700; background: #EA9C1E; }

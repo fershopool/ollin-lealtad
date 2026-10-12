@@ -1,0 +1,138 @@
+:root {
+  --crema: #F1EBD0;
+  --cafe: #34241C;
+  --verde: #2E6458;
+  --naranja: #EA9C1E;
+  --rojo: #8B1E1E;
+  --blanco: #FFFFFF;
+  --texto-suave: #5A4638;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--crema);
+  color: var(--cafe);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+main {
+  max-width: 480px;
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 16px;
+}
+
+h1 { font-size: 1.7rem; margin: 8px 0 16px; }
+
+label { display: block; font-weight: 700; margin-bottom: 8px; }
+
+/* Botones: mínimo 64 px de alto. */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 64px;
+  padding: 0 20px;
+  margin: 0 0 16px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--verde);
+  color: var(--blanco);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn:disabled { opacity: .5; cursor: default; }
+.btn:focus-visible { outline: 4px solid var(--naranja); outline-offset: 2px; }
+.btn-grande { min-height: 112px; font-size: 1.5rem; }
+.btn-claro { background: var(--blanco); color: var(--cafe); border: 2px solid var(--cafe); }
+.btn-chico { width: auto; min-width: 120px; margin: 0; }
+
+.fila { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+
+/* Campo numérico grande para PIN y códigos. */
+.campo {
+  display: block;
+  width: 100%;
+  min-height: 64px;
+  margin-bottom: 16px;
+  padding: 8px;
+  border: 3px solid var(--cafe);
+  border-radius: 12px;
+  background: var(--blanco);
+  color: var(--cafe);
+  font: inherit;
+  font-size: 2rem;
+  text-align: center;
+}
+
+.tarjeta {
+  background: var(--blanco);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 6px rgba(52, 36, 28, .15);
+}
+
+/* Mensajes: se anuncian con aria-live en el HTML. */
+.aviso, .error {
+  border-radius: 12px;
+  padding: 14px;
+  margin: 12px 0;
+  font-weight: 600;
+}
+.aviso { background: var(--verde); color: var(--blanco); }
+.error { background: var(--rojo); color: var(--blanco); }
+
+.oculto { display: none !important; }
+.centro { text-align: center; }
+.letra-chica { font-size: .85rem; color: var(--texto-suave); }
+
+/* QR: fondo blanco y margen; el svg ocupa el ancho, con máximo 320 px. */
+.qr-caja {
+  max-width: 320px;
+  margin: 0 auto 16px;
+  padding: 16px;
+  background: var(--blanco);
+}
+.qr-caja svg { display: block; width: 100%; height: auto; }
+
+.cuenta { font-size: 2rem; font-weight: 700; text-align: center; margin: 8px 0 16px; font-variant-numeric: tabular-nums; }
+
+.exito {
+  background: var(--verde);
+  color: var(--blanco);
+  border-radius: 20px;
+  padding: 40px 20px;
+  margin-bottom: 16px;
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+/* Sellos de la tarjeta del cliente. */
+.sellos { margin: 8px 0 16px; }
+.sello {
+  display: inline-block;
+  width: 44px;
+  height: 44px;
+  margin: 6px;
+  border: 3px solid var(--cafe);
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+.sello.lleno { background: var(--naranja); }
+
+/* Código de canje de 6 dígitos, enorme. */
+.codigo {
+  font-size: 4.5rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}

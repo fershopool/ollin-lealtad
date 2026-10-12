@@ -1,0 +1,7 @@
+# Operativo, no público: pasos del lunes y plantilla con los nombres de cafeterías/escuelas.
+LEEME-LUNES.md
+sql/datos.plantilla.sql
+# Si guardas la plantilla con PIN o clave reales, que nunca se suba por accidente.
+sql/datos.local.sql
+*.secreto.*
+.DS_Store

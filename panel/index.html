@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Panel · Quetzalitos</title>
+  <link rel="stylesheet" href="../estilo.css">
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <main>
+    <h1>Panel de Quetzalitos</h1>
+
+    <form id="form-clave">
+      <label for="clave">Clave admin</label>
+      <input id="clave" class="campo" type="password" autocomplete="off" required>
+      <button id="ver" class="btn btn-grande" type="submit">Ver métricas</button>
+    </form>
+
+    <label for="periodo">Periodo</label>
+    <select id="periodo" class="campo">
+      <option value="7">Últimos 7 días</option>
+      <option value="30">Últimos 30 días</option>
+      <option value="">Todo</option>
+    </select>
+
+    <p id="estado" class="aviso oculto" role="status"></p>
+    <p id="error" class="error oculto" role="alert"></p>
+
+    <div id="tabla" class="panel-tabla oculto">
+      <table>
+        <thead>
+          <tr>
+            <th>Cafetería</th><th>Escuela</th><th>Ventas</th><th>Reclamos</th>
+            <th>Adopción</th><th>Canjes</th><th>Tarjetas nuevas</th>
+          </tr>
+        </thead>
+        <tbody id="cuerpo"></tbody>
+      </table>
+    </div>
+
+    <p class="aviso">Ventas = QR generados por la cajera. No se ven las ventas donde la cajera no tocó el botón. Reclamos = QR escaneados por clientes.</p>
+  </main>
+
+  <script src="../config.js"></script>
+  <script src="../lib.js"></script>
+  <script src="panel.js"></script>
+</body>
+</html>
