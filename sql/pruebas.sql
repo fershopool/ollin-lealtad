@@ -273,6 +273,33 @@ select pg_temp.debe_err(public.entrar('111111'), 'pin_invalido', 'k: un PIN comp
 update public.cafeterias set activa = false where id = '00000000-0000-0000-0000-00000000000d';
 select pg_temp.debe_ok(public.entrar('111111'), 'k: con una sola cafeteria activa con ese PIN vuelve a entrar');
 
+-- ============ l) Tarjeta con uuid del cliente (reintento idempotente) ============
+select set_config('qz.u', gen_random_uuid()::text, true);
+select set_config('qz.cu', pg_temp.nueva_venta('222222'), true);
+select pg_temp.chk((public.reclamar(current_setting('qz.cu'), current_setting('qz.u')::uuid)->>'tarjeta_id') = current_setting('qz.u'),
+  'l: una tarjeta nueva con uuid del cliente debe crearse con ese mismo id');
+select pg_temp.repetido_ok(current_setting('qz.cu'), current_setting('qz.u')::uuid, 1);
+select pg_temp.chk((select count(*) from public.sellos where tarjeta_id = current_setting('qz.u')::uuid) = 1,
+  'l: el reintento con el mismo uuid no debe sumar otro sello');
+select set_config('qz.cu2', pg_temp.nueva_venta('111111'), true);
+select pg_temp.chk((public.reclamar(current_setting('qz.cu2'), current_setting('qz.u')::uuid)->>'nueva') = 'false',
+  'l: con una tarjeta que ya existe, nueva debe ser false');
+select pg_temp.chk((select count(*) from public.sellos where tarjeta_id = current_setting('qz.u')::uuid) = 2,
+  'l: el segundo token (otra cafeteria) suma el segundo sello a la misma tarjeta');
+
+-- ============ m) Valores extremos y limpieza ============
+update public.config set valor = '0' where clave = 'meta';
+select pg_temp.chk(public._meta() = 1, 'm: meta 0 debe tratarse como 1 (nunca premios sin sellos)');
+update public.config set valor = '-5' where clave = 'meta';
+select pg_temp.chk(public._meta() = 1, 'm: meta negativa debe tratarse como 1');
+update public.config set valor = '6' where clave = 'meta';
+select pg_temp.debe_ok(public.metricas('admin-prueba', 3000000), 'm: p_dias enorme no debe romper metricas');
+select pg_temp.debe_ok(public.metricas('admin-prueba', -3), 'm: p_dias negativo no debe romper metricas');
+insert into public.fallos_pin (creado_en) values (now() - interval '2 days');
+select pg_temp.debe_err(public.entrar('000000'), 'pin_invalido', 'm: un PIN malo se registra como fallo');
+select pg_temp.chk((select count(*) from public.fallos_pin where creado_en < now() - interval '1 day') = 0,
+  'm: los fallos de mas de un dia se purgan');
+
 -- ============ h) PIN incorrecto y bloqueo (al final: los 30 fallos bloquean todo) ============
 select pg_temp.debe_err(public.entrar('000000'), 'pin_invalido', 'h: entrar con PIN incorrecto');
 select pg_temp.debe_err(public.crear_venta('000000'), 'pin_invalido', 'h: crear_venta con PIN incorrecto');

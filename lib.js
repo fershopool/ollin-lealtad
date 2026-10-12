@@ -21,21 +21,28 @@
   var GENERICO = "Algo salió mal. Intenta de nuevo.";
 
   window.Q = {
-    // Siempre resuelve con un objeto JSON; los fallos de red o HTTP salen como {ok:false, error:"red"}.
+    // Siempre resuelve con un objeto JSON; los fallos de red, HTTP o tiempo agotado (12 s) salen como {ok:false, error:"red"}.
     rpc: function (fn, args) {
       var key = QUETZALITO.key;
       var cabeceras = { "Content-Type": "application/json", apikey: key };
       if (key.indexOf("eyJ") === 0) cabeceras.Authorization = "Bearer " + key;
+      var control = new AbortController();
+      var tiempo = setTimeout(function () { control.abort(); }, 12000);
       return fetch(QUETZALITO.url + "/rest/v1/rpc/" + fn, {
         method: "POST",
         headers: cabeceras,
-        body: JSON.stringify(args || {})
+        body: JSON.stringify(args || {}),
+        signal: control.signal
       })
         .then(function (res) {
           return res.ok ? res.json() : { ok: false, error: "red" };
         })
         .catch(function () {
           return { ok: false, error: "red" };
+        })
+        .then(function (r) {
+          clearTimeout(tiempo);
+          return r;
         });
     },
 

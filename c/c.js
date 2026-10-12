@@ -13,6 +13,18 @@
   var saldoAlCanje = 0; // saldo al pedir el código: si baja, el canje se usó
   var timerSaldo = null;
   var timerCuenta = null;
+  var reclamando = false; // hay un reclamo en curso: se ignora otro
+  var generada = false;   // el id de tarjeta se creó en el reclamo en curso
+
+  // uuid v4 con crypto.getRandomValues (crypto.randomUUID no existe sin HTTPS).
+  function nuevoId() {
+    var b = crypto.getRandomValues(new Uint8Array(16));
+    b[6] = (b[6] & 0x0f) | 0x40;
+    b[8] = (b[8] & 0x3f) | 0x80;
+    var h = "";
+    for (var i = 0; i < 16; i++) h += (b[i] + 0x100).toString(16).slice(1);
+    return h.slice(0, 8) + "-" + h.slice(8, 12) + "-" + h.slice(12, 16) + "-" + h.slice(16, 20) + "-" + h.slice(20);
+  }
 
   function storageDisponible() {
     try {
@@ -73,23 +85,40 @@
     $("tarjeta").classList.remove("oculto");
   }
 
-  function cargarTarjeta(id) {
+  function mostrarReintentar(visible) {
+    $("btn-reintentar").classList.toggle("oculto", !visible);
+  }
+
+  // silencioso: tras un reclamo fallido no pisar su mensaje con «No encontramos tu tarjeta».
+  function cargarTarjeta(id, silencioso) {
     Q.rpc("tarjeta", { p_tarjeta: id }).then(function (r) {
       if (r.ok) return pintar(r);
       if (r.error === "tarjeta_invalida") {
         tarjetaId = "";
         borrar();
         mostrarSinTarjeta();
+        if (silencioso) return;
       }
+      if (r.error === "red") mostrarReintentar(true);
       aviso(Q.msg(r.error), "error");
     });
   }
 
-  // Al escanear: reclamar el sello. La URL se limpia después para que recargar no lo repita.
+  // Al escanear: reclamar el sello. El hash se quita solo cuando el servidor respondió (no con error de red),
+  // para que recargar o Reintentar repitan el mismo reclamo.
   function reclamarSello(codigo) {
-    Q.rpc("reclamar", { p_codigo: codigo, p_tarjeta: tarjetaId || null }).then(function (r) {
-      history.replaceState(null, "", location.pathname + location.search);
+    if (reclamando) return;
+    reclamando = true;
+    generada = !tarjetaId;
+    if (generada) {
+      // Se guarda antes de llamar: si la respuesta se pierde, el reintento usa el mismo id.
+      tarjetaId = nuevoId();
+      guardar(tarjetaId);
+    }
+    Q.rpc("reclamar", { p_codigo: codigo, p_tarjeta: tarjetaId }).then(function (r) {
+      reclamando = false;
       if (r.ok) {
+        history.replaceState(null, "", location.pathname + location.search);
         tarjetaId = r.tarjeta_id;
         guardar(tarjetaId);
         var texto = r.repetido ? "Este sello ya estaba agregado" : "¡Sello agregado en " + r.cafeteria + "!";
@@ -98,8 +127,22 @@
         pintar(r);
         return;
       }
+      if (r.error === "red") {
+        $("sin-tarjeta").classList.add("oculto");
+        mostrarReintentar(true);
+        aviso(Q.msg(r.error), "error");
+        return;
+      }
+      history.replaceState(null, "", location.pathname + location.search);
       aviso(Q.msg(r.error), "error");
-      if (tarjetaId) cargarTarjeta(tarjetaId);
+      if (generada) {
+        // El servidor rechazó el QR con una tarjeta recién creada aquí: no la conservamos.
+        tarjetaId = "";
+        borrar();
+        mostrarSinTarjeta();
+      } else if (tarjetaId) {
+        cargarTarjeta(tarjetaId, true);
+      }
     });
   }
 
@@ -171,6 +214,8 @@
       aviso("Tu navegador no permite guardar datos. No podremos recordar tu tarjeta en este teléfono.", "error");
     }
     tarjetaId = leer();
+    // Quien ya tiene tarjeta no debe leer «Escanea el QR…» mientras carga.
+    if (tarjetaId) $("sin-tarjeta").classList.add("oculto");
     var codigo = location.hash.slice(1);
     if (codigo) return reclamarSello(codigo);
     if (tarjetaId) return cargarTarjeta(tarjetaId);
@@ -180,6 +225,12 @@
   // Escanear otro QR con esta página ya abierta solo cambia el hash (no recarga).
   window.addEventListener("hashchange", function () {
     if (location.hash.length > 1) iniciar();
+  });
+
+  $("btn-reintentar").addEventListener("click", function () {
+    this.classList.add("oculto");
+    aviso("", "");
+    iniciar();
   });
 
   iniciar();

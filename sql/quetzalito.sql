@@ -63,6 +63,7 @@ create table if not exists fallos_pin (
 create index if not exists tokens_cafeteria_creado_idx on tokens (cafeteria_id, creado_en);
 create index if not exists sellos_tarjeta_cafeteria_creado_idx on sellos (tarjeta_id, cafeteria_id, creado_en);
 create index if not exists canjes_codigo_creado_idx on canjes (codigo, creado_en);
+create index if not exists canjes_tarjeta_idx on canjes (tarjeta_id);
 create index if not exists fallos_pin_creado_idx on fallos_pin (creado_en);
 
 -- Sin políticas: RLS activo y sin acceso directo. El cliente solo entra por funciones.
@@ -84,19 +85,25 @@ insert into config (clave, valor) values ('meta', '6') on conflict do nothing;
 create or replace function _meta() returns int
 language sql security definer set search_path = public, extensions, pg_temp
 as $$
-  select coalesce((select valor::int from config where clave = 'meta'), 6)
+  select greatest(coalesce((select valor::int from config where clave = 'meta'), 6), 1)
 $$;
 
 -- ponytail: bloqueo global, no por IP (la función no ve la IP del cliente). Un atacante puede bloquear a todas las cajeras 10 min.
 create or replace function _bloqueado() returns boolean
-language sql security definer set search_path = public, extensions, pg_temp
+language plpgsql security definer set search_path = public, extensions, pg_temp
 as $$
-  select (select count(*) from fallos_pin f where f.creado_en > now() - interval '10 minutes') >= 30
+begin
+  -- Un intento a la vez: sin este candado, una ráfaga en paralelo se salta el límite porque ninguna ve los fallos sin confirmar de las otras
+  -- (y dos ventas simultáneas no pasarían del tope por hora). Se libera al terminar la transacción.
+  perform pg_advisory_xact_lock(hashtext('quetzalito.pin'));
+  return (select count(*) from fallos_pin f where f.creado_en > now() - interval '10 minutes') >= 30;
+end
 $$;
 
 create or replace function _registrar_fallo() returns void
 language sql security definer set search_path = public, extensions, pg_temp
 as $$
+  delete from fallos_pin where creado_en < now() - interval '1 day';
   insert into fallos_pin default values
 $$;
 
@@ -222,10 +229,18 @@ begin
       return json_build_object('ok', false, 'error', 'token_vencido');
     end if;
 
-    select id into v_tarj from tarjetas where id = p_tarjeta for update;
-    if not found then
-      insert into tarjetas default values returning id into v_tarj;
-      v_nueva := true;
+    -- El cliente puede traer un uuid nuevo (lo guarda antes de llamar): así reintentar tras perder la respuesta es idempotente.
+    if p_tarjeta is not null then
+      insert into tarjetas (id) values (p_tarjeta) on conflict (id) do nothing returning id into v_tarj;
+      v_nueva := found;
+    end if;
+    if v_tarj is null then
+      if p_tarjeta is null then
+        insert into tarjetas default values returning id into v_tarj;
+        v_nueva := true;
+      else
+        select id into v_tarj from tarjetas where id = p_tarjeta for update;
+      end if;
     end if;
 
     if exists (
@@ -362,7 +377,7 @@ begin
   end if;
 
   v_desde := case when p_dias is null then '-infinity'::timestamptz
-                  else now() - make_interval(days => p_dias) end;
+                  else now() - make_interval(days => least(greatest(p_dias, 1), 36500)) end;
 
   select coalesce(json_agg(f order by f.escuela, f.cafeteria), '[]'::json) into v_filas
   from (

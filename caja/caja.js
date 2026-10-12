@@ -77,16 +77,27 @@
     });
   });
 
-  // Al abrir: si hay PIN guardado, validarlo; si falla, volver al login.
+  // Al abrir: si hay PIN guardado, validarlo. Solo un PIN incorrecto borra el guardado;
+  // con red o bloqueo se conserva y se ofrece Reintentar.
   function iniciar() {
     pinActual = leerPin();
     if (!pinActual) { mostrar("login"); return; }
     mostrar("carga");
     Q.rpc("entrar", { p_pin: pinActual }).then(function (r) {
-      if (r.ok) irAMenu(r.cafeteria);
-      else cerrarSesion(Q.msg(r.error));
+      if (r.ok) return irAMenu(r.cafeteria);
+      if (r.error === "pin_invalido") return cerrarSesion(Q.msg(r.error));
+      $("carga-verificando").classList.add("oculto");
+      mensaje($("carga-msg"), Q.msg(r.error), "error");
+      $("btn-reintentar").classList.remove("oculto");
     });
   }
+
+  $("btn-reintentar").addEventListener("click", function () {
+    this.classList.add("oculto");
+    mensaje($("carga-msg"), "", "");
+    $("carga-verificando").classList.remove("oculto");
+    iniciar();
+  });
 
   $("btn-salir").addEventListener("click", function () { cerrarSesion(""); });
 
@@ -164,6 +175,11 @@
         return mostrar("exito");
       }
       if (r.error === "pin_invalido") return cerrarSesion(Q.msg(r.error));
+      // Con red el canje pudo quedar registrado: se pide reintentar sin asumir que falló.
+      if (r.error === "red") {
+        mensaje($("canje-msg"), "No se pudo confirmar el canje. Vuelve a tocar «Validar»: si dice que ya fue usado, el canje sí quedó registrado hace un momento.", "error");
+        return;
+      }
       mensaje($("canje-msg"), Q.msg(r.error), "error");
     });
   });

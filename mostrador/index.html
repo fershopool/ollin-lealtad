@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Mostrador Quetzalitos</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="mostrador.css">
+</head>
+<body>
+<div class="barra">
+  <button id="btn-imprimir" class="btn-imprimir" type="button">Imprimir</button>
+</div>
+
+<section class="hoja letrero">
+  <p class="etiqueta solo-pantalla">Letrero para el mostrador</p>
+  <h1>¿Compraste un postre Quetzalitos?</h1>
+  <p class="grande">Pide tu QR a la cajera.</p>
+  <p class="grande">A los 6 sellos, el 7.º va por la casa.</p>
+  <p class="chico">Escanéalo con la cámara de tu celular. Sin app y sin darnos tus datos.</p>
+</section>
+
+<section class="hoja caja">
+  <h1>Cómo usar la caja</h1>
+  <ol>
+    <li>
+      Abre esta dirección con tu celular y añádela a la pantalla de inicio.
+      <div id="qr-caja" class="qr-caja"></div>
+      <p id="url-caja" class="url"></p>
+    </li>
+    <li>Escribe tu PIN. Solo tú lo sabes; no se lo des a nadie.</li>
+    <li>En CADA postre vendido toca «Venta de postre» y muestra el QR al cliente; lo escanea con la cámara (vence en 5 minutos).</li>
+    <li>Si el cliente pide su premio, te dice un código de 6 dígitos: toca «Canjear premio», escríbelo, toca «Validar» y entrega el postre gratis.</li>
+    <li>Si no tocas «Venta de postre», esa venta no cuenta para la tarjeta del cliente.</li>
+  </ol>
+</section>
+
+<script src="../vendor/qrcode.js"></script>
+<script src="mostrador.js"></script>
+</body>
+</html>

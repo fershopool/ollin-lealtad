@@ -114,4 +114,23 @@ if [ "$TOTAL_C" -ne 10 ] || [ "$OK_C" -ne 1 ] || [ "$USADO_C" -ne 9 ]; then
 fi
 echo "carrera canjear: 1 ok y 9 canje_usado"
 
+# ---------- Carrera 3: tope por hora con 20 ventas simultaneas (pgbench: 20 clientes a la vez) ----------
+psql -d "$BD" -X -v ON_ERROR_STOP=1 -q <<'SQL'
+insert into public.cafeterias (id, nombre, escuela, slug, pin_hash, activa, tope_hora)
+values ('00000000-0000-0000-0000-0000000000cb', 'Cafe Tope', 'Escuela Tope', 'cafe-tope',
+        extensions.crypt('555555', extensions.gen_salt('bf')), true, 5);
+SQL
+echo "select public.crear_venta('555555');" > "$TMP/tope.sql"
+pgbench -n -c 20 -j 4 -t 1 -f "$TMP/tope.sql" "$BD" >/dev/null 2>&1 || fallo "pgbench de la carrera del tope"
+TOKENS_TOPE=$(psql -d "$BD" -X -At -c "select count(*) from public.tokens where cafeteria_id = '00000000-0000-0000-0000-0000000000cb'")
+[ "$TOKENS_TOPE" = "5" ] || fallo "carrera del tope: $TOKENS_TOPE tokens con 20 ventas simultaneas (esperado 5)"
+echo "carrera tope: 5 tokens de 20 ventas simultaneas"
+
+# ---------- Carrera 4: limite de intentos con 40 PIN incorrectos a la vez (al final: bloquea todo) ----------
+echo "select public.entrar('000000');" > "$TMP/pin.sql"
+pgbench -n -c 40 -j 8 -t 1 -f "$TMP/pin.sql" "$BD" >/dev/null 2>&1 || fallo "pgbench de la carrera del PIN"
+FALLOS=$(psql -d "$BD" -X -At -c "select count(*) from public.fallos_pin")
+[ "$FALLOS" = "30" ] || fallo "carrera del PIN: $FALLOS fallos registrados con 40 intentos simultaneos (esperado exactamente 30)"
+echo "carrera PIN: exactamente 30 fallos de 40 intentos simultaneos"
+
 echo "OK: todas las pruebas pasaron"

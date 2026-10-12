@@ -4,6 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
+  <meta name="apple-mobile-web-app-title" content="Caja Quetzalitos">
+  <meta name="theme-color" content="#2E6458">
   <title>Caja Quetzalitos</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="../estilo.css">
@@ -11,7 +13,9 @@
 <body>
 <main>
   <section id="carga">
-    <p class="centro" aria-live="polite">Verificando…</p>
+    <p id="carga-verificando" class="centro" aria-live="polite">Verificando…</p>
+    <p id="carga-msg" aria-live="polite" class="oculto"></p>
+    <button id="btn-reintentar" class="btn btn-grande oculto" type="button">Reintentar</button>
   </section>
 
   <section id="login" class="oculto">
