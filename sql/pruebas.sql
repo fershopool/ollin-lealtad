@@ -300,6 +300,103 @@ select pg_temp.debe_err(public.entrar('000000'), 'pin_invalido', 'm: un PIN malo
 select pg_temp.chk((select count(*) from public.fallos_pin where creado_en < now() - interval '1 day') = 0,
   'm: los fallos de mas de un dia se purgan');
 
+-- ============ n) crear_cafeteria (alta desde el panel) ============
+select set_config('qz.f0', (select count(*) from public.fallos_pin)::text, true);
+select pg_temp.debe_err(public.crear_cafeteria('clave-mal', 'Cafe N', 'Escuela N', '555000'), 'clave_invalida', 'n: clave incorrecta');
+select pg_temp.chk((select count(*) from public.fallos_pin) = current_setting('qz.f0')::int + 1, 'n: una clave incorrecta se registra como fallo');
+select pg_temp.debe_err(public.crear_cafeteria('admin-prueba', '  ', 'Escuela N', '555000'), 'datos_invalidos', 'n: nombre vacio');
+select pg_temp.debe_err(public.crear_cafeteria('admin-prueba', 'X', 'Escuela N', '555000'), 'datos_invalidos', 'n: nombre de una letra');
+select pg_temp.debe_err(public.crear_cafeteria('admin-prueba', null, 'Escuela N', '555000'), 'datos_invalidos', 'n: nombre nulo');
+select pg_temp.debe_err(public.crear_cafeteria('admin-prueba', repeat('x', 81), 'Escuela N', '555000'), 'datos_invalidos', 'n: nombre de mas de 80');
+select pg_temp.debe_err(public.crear_cafeteria('admin-prueba', 'Cafe N', '', '555000'), 'datos_invalidos', 'n: escuela vacia');
+select pg_temp.debe_err(public.crear_cafeteria('admin-prueba', 'Cafe N', repeat('x', 41), '555000'), 'datos_invalidos', 'n: escuela de mas de 40');
+select pg_temp.debe_err(public.crear_cafeteria('admin-prueba', 'Cafe N', 'Escuela N', '12345'), 'pin_formato', 'n: PIN de 5 digitos');
+select pg_temp.debe_err(public.crear_cafeteria('admin-prueba', 'Cafe N', 'Escuela N', '1234567'), 'pin_formato', 'n: PIN de 7 digitos');
+select pg_temp.debe_err(public.crear_cafeteria('admin-prueba', 'Cafe N', 'Escuela N', 'abcdef'), 'pin_formato', 'n: PIN con letras');
+select pg_temp.debe_err(public.crear_cafeteria('admin-prueba', 'Cafe N', 'Escuela N', E'123456\n'), 'pin_formato', 'n: PIN con salto de linea');
+select pg_temp.debe_err(public.crear_cafeteria('admin-prueba', 'Cafe N', 'Escuela N', null), 'pin_formato', 'n: PIN nulo');
+select pg_temp.chk((select count(*) from public.cafeterias where nombre = 'Cafe N') = 0, 'n: ningun dato invalido debe crear cafeteria');
+select pg_temp.chk((select count(*) from public.fallos_pin) = current_setting('qz.f0')::int + 1, 'n: los datos invalidos con clave correcta no registran fallos');
+select pg_temp.debe_err(public.crear_cafeteria('admin-prueba', 'Cafe N', 'Escuela N', '222222'), 'pin_repetido', 'n: PIN igual al de otra cafeteria activa');
+insert into public.cafeterias (id, nombre, escuela, slug, pin_hash, activa) values
+  ('00000000-0000-0000-0000-0000000000e1', 'Cafe Inactiva', 'Escuela N', 'cafe-inactiva-test',
+   extensions.crypt('777777', extensions.gen_salt('bf')), false);
+select pg_temp.debe_err(public.crear_cafeteria('admin-prueba', 'Cafe N', 'Escuela N', '777777'), 'pin_repetido', 'n: PIN igual al de una cafeteria inactiva');
+-- Alta correcta: recorta espacios, slug sin acentos, PIN con hash y entrada con ese PIN.
+select pg_temp.debe_ok(public.crear_cafeteria('admin-prueba', '  Cafetería Ñandú 1 ', ' Escuela N ', '555000'), 'n: alta correcta');
+select pg_temp.chk((select count(*) from public.cafeterias where nombre = 'Cafetería Ñandú 1' and escuela = 'Escuela N') = 1,
+  'n: nombre y escuela se guardan sin espacios sobrantes');
+select pg_temp.chk((select slug from public.cafeterias where nombre = 'Cafetería Ñandú 1') = 'cafeteria-nandu-1-escuela-n',
+  'n: slug sin acentos y con guiones');
+select pg_temp.chk(public.entrar('555000')->>'cafeteria' = 'Cafetería Ñandú 1', 'n: la cafeteria nueva entra con su PIN');
+select pg_temp.chk((select pin_hash <> '555000' and pin_hash like '$2%' from public.cafeterias where nombre = 'Cafetería Ñandú 1'),
+  'n: el PIN se guarda con hash bcrypt, no en claro');
+select set_config('qz.r_n2', public.crear_cafeteria('admin-prueba', 'Cafe N2', 'Escuela N', '555001')::text, true);
+select pg_temp.chk(current_setting('qz.r_n2')::json->>'ok' = 'true' and current_setting('qz.r_n2') not like '%555001%',
+  'n: otra alta correcta y la respuesta no incluye el PIN');
+select pg_temp.debe_err(public.crear_cafeteria('admin-prueba', 'Cafe N3', 'Escuela N', '555000'), 'pin_repetido',
+  'n: no se puede repetir el PIN de una cafeteria recien creada');
+-- Mismo nombre y escuela con otro PIN: el slug recibe sufijo; sin letras usa «cafeteria».
+select pg_temp.debe_ok(public.crear_cafeteria('admin-prueba', 'Cafetería Ñandú 1', 'Escuela N', '555002'), 'n: mismo nombre y escuela con otro PIN');
+select pg_temp.chk(exists (select 1 from public.cafeterias where slug = 'cafeteria-nandu-1-escuela-n-2'), 'n: el slug repetido recibe el sufijo -2');
+-- Espacios raros (tabulador, salto de linea, repetidos) se normalizan; acentos y letras variadas salen sin acento en el slug.
+select pg_temp.debe_ok(public.crear_cafeteria('admin-prueba', E'Cafe\n  Tab\tUno', 'Escuela N', '555005'), 'n: nombre con tabulador, salto de linea y espacios repetidos');
+select pg_temp.chk(exists (select 1 from public.cafeterias where nombre = 'Cafe Tab Uno' and slug = 'cafe-tab-uno-escuela-n'),
+  'n: los espacios raros se colapsan a uno solo, en el nombre y en el slug');
+select pg_temp.debe_ok(public.crear_cafeteria('admin-prueba', 'Café Ça Ôpéra Müller', 'Escuela N', '555006'), 'n: nombre con acentos variados');
+select pg_temp.chk(exists (select 1 from public.cafeterias where slug = 'cafe-ca-opera-muller-escuela-n'),
+  'n: el slug quita acentos de minusculas y mayusculas (a, e, i, o, u, u con dieresis, n, c)');
+select pg_temp.debe_ok(public.crear_cafeteria('admin-prueba', '!!', '??', '555003'), 'n: nombre y escuela solo con simbolos');
+select pg_temp.chk(exists (select 1 from public.cafeterias where slug = 'cafeteria'), 'n: sin letras el slug es cafeteria');
+-- anon puede llamarla (con la clave) y la nueva cafeteria aparece en metricas con ceros.
+set local role anon;
+select set_config('qz.anon_crear', public.crear_cafeteria('admin-prueba', 'Cafe Anon', 'Escuela N', '555004')->>'ok', true);
+reset role;
+select pg_temp.chk(current_setting('qz.anon_crear') = 'true', 'n: anon debe poder llamar crear_cafeteria con la clave correcta');
+select pg_temp.esperar_fila(null::int, 'cafeteria-nandu-1-escuela-n', 0, 0, 0, 0);
+
+-- ============ o) eliminar_cafeteria (baja desde el panel) ============
+select set_config('qz.f1', (select count(*) from public.fallos_pin)::text, true);
+select pg_temp.debe_err(public.eliminar_cafeteria('clave-mal', 'cafe-c'), 'clave_invalida', 'o: clave incorrecta');
+select pg_temp.chk((select count(*) from public.fallos_pin) = current_setting('qz.f1')::int + 1, 'o: una clave incorrecta se registra como fallo');
+select pg_temp.chk(exists (select 1 from public.cafeterias where slug = 'cafe-c'), 'o: con clave incorrecta no se borra nada');
+select pg_temp.debe_err(public.eliminar_cafeteria('admin-prueba', 'no-hay-tal'), 'no_existe', 'o: slug inexistente');
+select pg_temp.debe_err(public.eliminar_cafeteria('admin-prueba', null), 'no_existe', 'o: slug nulo');
+select pg_temp.chk((select count(*) from public.fallos_pin) = current_setting('qz.f1')::int + 1, 'o: un slug inexistente con clave correcta no registra fallos');
+-- Con historial se niega y no borra; los conteos de la respuesta coinciden con la base.
+select pg_temp.debe_err(public.eliminar_cafeteria('admin-prueba', 'cafe-a'), 'con_historial', 'o: A tiene historial');
+select pg_temp.chk(exists (select 1 from public.cafeterias where slug = 'cafe-a'), 'o: una cafeteria con historial no se borra');
+select pg_temp.chk((public.eliminar_cafeteria('admin-prueba', 'cafe-a')->>'ventas')::int = (select count(*) from public.tokens where cafeteria_id = (select id from public.cafeterias where slug = 'cafe-a'))
+  and (public.eliminar_cafeteria('admin-prueba', 'cafe-a')->>'reclamos')::int = (select count(*) from public.sellos where cafeteria_id = (select id from public.cafeterias where slug = 'cafe-a'))
+  and (public.eliminar_cafeteria('admin-prueba', 'cafe-a')->>'canjes')::int = (select count(*) from public.canjes where cafeteria_id = (select id from public.cafeterias where slug = 'cafe-a')),
+  'o: los conteos de con_historial coinciden con tokens, sellos y canjes de A');
+-- Cada tipo de historial, por separado, impide la baja: una venta sin reclamar y un canje usado ahí.
+select pg_temp.debe_ok(public.crear_cafeteria('admin-prueba', 'Cafe Del Venta', 'Escuela O', '600001'), 'o: alta para probar la baja con una venta');
+select pg_temp.debe_ok(public.crear_venta('600001'), 'o: venta en la cafeteria nueva');
+select pg_temp.debe_err(public.eliminar_cafeteria('admin-prueba', 'cafe-del-venta-escuela-o'), 'con_historial', 'o: una venta sin reclamar ya cuenta como historial');
+select pg_temp.chk((public.eliminar_cafeteria('admin-prueba', 'cafe-del-venta-escuela-o')->>'ventas')::int = 1, 'o: la respuesta cuenta la venta');
+select pg_temp.debe_ok(public.crear_cafeteria('admin-prueba', 'Cafe Del Canje', 'Escuela O', '600004'), 'o: alta para probar la baja con un canje');
+with t as (insert into public.tarjetas default values returning id)
+insert into public.canjes (tarjeta_id, cafeteria_id, codigo, usado_en)
+  select t.id, c.id, '999999', now() from t, public.cafeterias c where c.slug = 'cafe-del-canje-escuela-o';
+select pg_temp.debe_err(public.eliminar_cafeteria('admin-prueba', 'cafe-del-canje-escuela-o'), 'con_historial', 'o: un canje usado ahi cuenta como historial');
+-- Sin historial: se borra, su PIN deja de entrar y el PIN y el slug quedan libres.
+select pg_temp.debe_ok(public.crear_cafeteria('admin-prueba', 'Cafe Del Libre', 'Escuela O', '600002'), 'o: alta de una cafeteria sin actividad');
+select pg_temp.debe_ok(public.entrar('600002'), 'o: antes de borrarla su PIN entra');
+select pg_temp.chk(public.eliminar_cafeteria('admin-prueba', 'cafe-del-libre-escuela-o')->>'cafeteria' = 'Cafe Del Libre', 'o: la baja devuelve el nombre');
+select pg_temp.chk(not exists (select 1 from public.cafeterias where slug = 'cafe-del-libre-escuela-o'), 'o: la cafeteria borrada ya no existe');
+select pg_temp.debe_err(public.entrar('600002'), 'pin_invalido', 'o: el PIN de una cafeteria borrada ya no entra');
+select pg_temp.debe_err(public.eliminar_cafeteria('admin-prueba', 'cafe-del-libre-escuela-o'), 'no_existe', 'o: borrarla otra vez da no_existe');
+select pg_temp.chk((select count(*) from public.cafeterias where slug in ('cafe-a', 'cafe-b', 'cafe-c')) = 3, 'o: borrar una cafeteria no toca a las demas');
+select pg_temp.debe_ok(public.crear_cafeteria('admin-prueba', 'Cafe Del Libre', 'Escuela O', '600002'), 'o: tras borrarla, el PIN y el slug quedan libres');
+-- anon puede llamarla (con la clave).
+select pg_temp.debe_ok(public.crear_cafeteria('admin-prueba', 'Cafe Del Anon', 'Escuela O', '600003'), 'o: alta para la baja hecha por anon');
+set local role anon;
+select set_config('qz.anon_elim', public.eliminar_cafeteria('admin-prueba', 'cafe-del-anon-escuela-o')->>'ok', true);
+reset role;
+select pg_temp.chk(current_setting('qz.anon_elim') = 'true', 'o: anon debe poder llamar eliminar_cafeteria con la clave correcta');
+select pg_temp.chk(not exists (select 1 from public.cafeterias where slug = 'cafe-del-anon-escuela-o'), 'o: la baja hecha por anon borro la cafeteria');
+
 -- ============ h) PIN incorrecto y bloqueo (al final: los 30 fallos bloquean todo) ============
 select pg_temp.debe_err(public.entrar('000000'), 'pin_invalido', 'h: entrar con PIN incorrecto');
 select pg_temp.debe_err(public.crear_venta('000000'), 'pin_invalido', 'h: crear_venta con PIN incorrecto');
@@ -314,6 +411,11 @@ select pg_temp.chk((select count(*) from public.tokens)::text = current_setting(
   'h: una crear_venta bloqueada no debe crear token');
 select pg_temp.debe_err(public.canjear('111111', current_setting('qz.canje2')), 'bloqueado', 'h: canjear con PIN correcto tras 30 fallos');
 select pg_temp.debe_err(public.metricas('admin-prueba', null::int), 'bloqueado', 'h: metricas con clave correcta tras 30 fallos');
+select set_config('qz.ncaf', (select count(*) from public.cafeterias)::text, true);
+select pg_temp.debe_err(public.crear_cafeteria('admin-prueba', 'Cafe Z', 'Escuela Z', '666000'), 'bloqueado', 'h: crear_cafeteria con clave correcta tras 30 fallos');
+select pg_temp.chk((select count(*) from public.cafeterias)::text = current_setting('qz.ncaf'), 'h: una crear_cafeteria bloqueada no debe crear cafeteria');
+select pg_temp.debe_err(public.eliminar_cafeteria('admin-prueba', 'cafe-c'), 'bloqueado', 'h: eliminar_cafeteria con clave correcta tras 30 fallos');
+select pg_temp.chk((select count(*) from public.cafeterias)::text = current_setting('qz.ncaf'), 'h: una eliminar_cafeteria bloqueada no debe borrar cafeteria');
 
 -- Todo lo anterior se revierte; el veredicto va al final porque el editor de Supabase solo muestra el último resultado.
 rollback;

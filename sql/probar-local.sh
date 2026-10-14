@@ -29,7 +29,7 @@ trap limpiar EXIT
 
 # BD temporal y roles de Supabase (anon, authenticated)
 psql -d postgres -X -v ON_ERROR_STOP=1 -q -c "drop database if exists $BD with (force);"
-psql -d postgres -X -v ON_ERROR_STOP=1 -q -c "create database $BD;"
+psql -d postgres -X -v ON_ERROR_STOP=1 -q -c "create database $BD encoding 'UTF8' template template0;"
 psql -d postgres -X -v ON_ERROR_STOP=1 -q <<'SQL'
 do $$
 begin

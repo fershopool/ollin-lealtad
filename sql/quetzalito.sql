@@ -400,6 +400,98 @@ begin
 end
 $$;
 
+-- Alta de cafetería desde el panel: exige la clave admin. Quien llama elige el PIN (6 dígitos); se guarda con hash y no se devuelve.
+create or replace function crear_cafeteria(p_clave text, p_nombre text, p_escuela text, p_pin text) returns json
+language plpgsql security definer set search_path = public, extensions, pg_temp
+as $$
+declare
+  v_hash text;
+  v_nombre text := btrim(regexp_replace(coalesce(p_nombre, ''), '\s+', ' ', 'g'));
+  v_escuela text := btrim(regexp_replace(coalesce(p_escuela, ''), '\s+', ' ', 'g'));
+  v_base text;
+  v_slug text;
+  v_n int := 1;
+begin
+  if _bloqueado() then
+    return json_build_object('ok', false, 'error', 'bloqueado');
+  end if;
+  select valor into v_hash from config where clave = 'admin_hash';
+  if v_hash is null or extensions.crypt(p_clave, v_hash) is distinct from v_hash then
+    perform _registrar_fallo();
+    return json_build_object('ok', false, 'error', 'clave_invalida');
+  end if;
+
+  if char_length(v_nombre) not between 2 and 80 or char_length(v_escuela) not between 1 and 40 then
+    return json_build_object('ok', false, 'error', 'datos_invalidos');
+  end if;
+  if p_pin is null or p_pin !~ '^[0-9]{6}$' then
+    return json_build_object('ok', false, 'error', 'pin_formato');
+  end if;
+  -- Un PIN compartido anula a las dos cafeterías (_cafeteria_por_pin): se rechaza, también contra las inactivas.
+  if exists (select 1 from cafeterias c where c.pin_hash = extensions.crypt(p_pin, c.pin_hash)) then
+    return json_build_object('ok', false, 'error', 'pin_repetido');
+  end if;
+
+  -- slug: nombre y escuela sin acentos, en minúsculas y con guiones; si ya existe se añade -2, -3...
+  -- (el candado de _bloqueado() serializa las altas, así que no hay carrera entre dos llamadas).
+  -- (se quitan los acentos antes de pasar a minúsculas: lower() no toca las letras con acento en todas las configuraciones regionales).
+  v_base := trim(both '-' from left(regexp_replace(
+    lower(translate(v_nombre || ' ' || v_escuela,
+      'áàäâãéèëêíìïîóòöôõúùüûñçÁÀÄÂÃÉÈËÊÍÌÏÎÓÒÖÔÕÚÙÜÛÑÇ',
+      'aaaaaeeeeiiiiooooouuuuncAAAAAEEEEIIIIOOOOOUUUUNC')), '[^a-z0-9]+', '-', 'g'), 50));
+  if v_base = '' then
+    v_base := 'cafeteria';
+  end if;
+  v_slug := v_base;
+  while exists (select 1 from cafeterias where slug = v_slug) loop
+    v_n := v_n + 1;
+    v_slug := v_base || '-' || v_n;
+  end loop;
+
+  insert into cafeterias (nombre, escuela, slug, pin_hash)
+  values (v_nombre, v_escuela, v_slug, extensions.crypt(p_pin, extensions.gen_salt('bf', 8)));
+  return json_build_object('ok', true, 'cafeteria', v_nombre, 'escuela', v_escuela, 'slug', v_slug);
+end
+$$;
+
+-- Baja de cafetería desde el panel: exige la clave admin y solo borra una que no tenga ventas, sellos ni canjes.
+-- Con historial se niega (con_historial + conteos): borrarlo le quitaría sellos a las tarjetas de los clientes.
+create or replace function eliminar_cafeteria(p_clave text, p_slug text) returns json
+language plpgsql security definer set search_path = public, extensions, pg_temp
+as $$
+declare
+  v_hash text;
+  v_cafe cafeterias;
+  v_ventas int;
+  v_reclamos int;
+  v_canjes int;
+begin
+  if _bloqueado() then
+    return json_build_object('ok', false, 'error', 'bloqueado');
+  end if;
+  select valor into v_hash from config where clave = 'admin_hash';
+  if v_hash is null or extensions.crypt(p_clave, v_hash) is distinct from v_hash then
+    perform _registrar_fallo();
+    return json_build_object('ok', false, 'error', 'clave_invalida');
+  end if;
+
+  select * into v_cafe from cafeterias where slug = p_slug for update;
+  if v_cafe.id is null then
+    return json_build_object('ok', false, 'error', 'no_existe');
+  end if;
+  select count(*) into v_ventas from tokens where cafeteria_id = v_cafe.id;
+  select count(*) into v_reclamos from sellos where cafeteria_id = v_cafe.id;
+  select count(*) into v_canjes from canjes where cafeteria_id = v_cafe.id;
+  if v_ventas + v_reclamos + v_canjes > 0 then
+    return json_build_object('ok', false, 'error', 'con_historial', 'cafeteria', v_cafe.nombre,
+                             'ventas', v_ventas, 'reclamos', v_reclamos, 'canjes', v_canjes);
+  end if;
+
+  delete from cafeterias where id = v_cafe.id;
+  return json_build_object('ok', true, 'cafeteria', v_cafe.nombre, 'escuela', v_cafe.escuela);
+end
+$$;
+
 -- Permisos --------------------------------------------------------------------
 
 revoke all on function _meta(), _bloqueado(), _registrar_fallo(), _cafeteria_por_pin(text),
@@ -407,9 +499,11 @@ revoke all on function _meta(), _bloqueado(), _registrar_fallo(), _cafeteria_por
   from public, anon, authenticated;
 
 revoke all on function entrar(text), crear_venta(text), reclamar(text, uuid), tarjeta(uuid),
-  pedir_canje(uuid), canjear(text, text), metricas(text, int)
+  pedir_canje(uuid), canjear(text, text), metricas(text, int), crear_cafeteria(text, text, text, text),
+  eliminar_cafeteria(text, text)
   from public, anon, authenticated;
 
 grant execute on function entrar(text), crear_venta(text), reclamar(text, uuid), tarjeta(uuid),
-  pedir_canje(uuid), canjear(text, text), metricas(text, int)
+  pedir_canje(uuid), canjear(text, text), metricas(text, int), crear_cafeteria(text, text, text, text),
+  eliminar_cafeteria(text, text)
   to anon, authenticated;

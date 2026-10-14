@@ -16,6 +16,11 @@
     canje_usado: "Este código de canje ya fue usado.",
     canje_vencido: "El código de canje venció. Pide uno nuevo.",
     clave_invalida: "Clave incorrecta.",
+    datos_invalidos: "Revisa el nombre (de 2 a 80 caracteres) y la escuela (de 1 a 40).",
+    pin_formato: "El PIN debe tener exactamente 6 números.",
+    pin_repetido: "Ese PIN ya lo usa otra cafetería. Elige otro (si acabas de crearla, revisa la tabla).",
+    no_existe: "Esa cafetería ya no existe. Revisa la tabla.",
+    con_historial: "Esa cafetería ya tiene ventas, sellos o canjes y no se puede eliminar.",
     red: "Sin conexión. Revisa tu internet e intenta de nuevo."
   };
   var GENERICO = "Algo salió mal. Intenta de nuevo.";

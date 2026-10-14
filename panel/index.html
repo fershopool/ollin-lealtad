@@ -46,6 +46,44 @@
     </div>
 
     <p class="aviso">Ventas = QR generados por la cajera. No se ven las ventas donde la cajera no tocó el botón. Reclamos = QR escaneados por clientes.</p>
+
+    <section id="nueva" class="oculto">
+      <h2>Nueva cafetería</h2>
+      <form id="form-nueva" autocomplete="off">
+        <label for="n-nombre">Nombre</label>
+        <input id="n-nombre" class="campo campo-texto" type="text" maxlength="80" required>
+        <label for="n-escuela">Escuela</label>
+        <input id="n-escuela" class="campo campo-texto" type="text" maxlength="40" list="escuelas" required>
+        <datalist id="escuelas"></datalist>
+        <label for="n-pin">PIN de la cajera (6 números)</label>
+        <div class="fila-pin">
+          <input id="n-pin" class="campo" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required>
+          <button id="n-generar" class="btn btn-chico btn-claro" type="button">Generar</button>
+        </div>
+        <button id="n-crear" class="btn btn-oro" type="submit">Crear cafetería</button>
+      </form>
+      <p id="n-ok" class="aviso oculto" role="status"></p>
+      <p id="n-error" class="error oculto" role="alert"></p>
+    </section>
+
+    <section id="eliminar" class="oculto">
+      <h2>Eliminar cafetería</h2>
+      <p class="letra-chica">Solo se puede eliminar una que aún no tenga ventas, sellos ni canjes (por ejemplo, una dada de alta por error).</p>
+      <form id="form-eliminar">
+        <label for="e-cual">Cafetería</label>
+        <select id="e-cual" class="campo campo-texto" required></select>
+        <button id="e-borrar" class="btn btn-claro" type="submit">Eliminar…</button>
+      </form>
+      <div id="e-confirmar" class="aviso oculto" role="alertdialog" aria-labelledby="e-pregunta">
+        <p id="e-pregunta"></p>
+        <div class="fila">
+          <button id="e-si" class="btn btn-rosa btn-chico" type="button">Sí, eliminar</button>
+          <button id="e-no" class="btn btn-claro btn-chico" type="button">Cancelar</button>
+        </div>
+      </div>
+      <p id="e-ok" class="aviso oculto" role="status"></p>
+      <p id="e-error" class="error oculto" role="alert"></p>
+    </section>
     <footer class="pie"><div class="greca"></div></footer>
   </main>
 
