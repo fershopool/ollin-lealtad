@@ -88,7 +88,7 @@ as $$
   select greatest(coalesce((select valor::int from config where clave = 'meta'), 6), 1)
 $$;
 
--- ponytail: bloqueo global, no por IP (la función no ve la IP del cliente). Un atacante puede bloquear a todas las cajeras 10 min.
+-- ponytail: bloqueo global, no por IP (la función no ve la IP del cliente). Un atacante puede bloquear a todo el personal de caja 10 min.
 create or replace function _bloqueado() returns boolean
 language plpgsql security definer set search_path = public, extensions, pg_temp
 as $$
@@ -381,7 +381,7 @@ begin
 
   select coalesce(json_agg(f order by f.escuela, f.cafeteria), '[]'::json) into v_filas
   from (
-    select c.nombre as cafeteria, c.escuela, c.slug,
+    select c.nombre as cafeteria, c.escuela, c.slug, c.activa, c.tope_hora,
       (select count(*) from tokens t
         where t.cafeteria_id = c.id and t.creado_en >= v_desde) as ventas,
       (select count(*) from sellos s
@@ -492,6 +492,75 @@ begin
 end
 $$;
 
+-- Edición de una cafetería desde el panel: exige la clave admin. Los parámetros null no se tocan y el slug nunca cambia.
+-- Todo se valida antes de escribir, así que un dato inválido no deja cambios a medias. Con activa = false deja de entrar con su PIN.
+create or replace function editar_cafeteria(p_clave text, p_slug text, p_nombre text default null, p_escuela text default null,
+                                            p_pin text default null, p_activa boolean default null, p_tope_hora int default null)
+returns json
+language plpgsql security definer set search_path = public, extensions, pg_temp
+as $$
+declare
+  v_hash text;
+  v_cafe cafeterias;
+  v_nombre text;
+  v_escuela text;
+  v_pin_cambiado boolean := false;
+begin
+  if _bloqueado() then
+    return json_build_object('ok', false, 'error', 'bloqueado');
+  end if;
+  select valor into v_hash from config where clave = 'admin_hash';
+  if v_hash is null or extensions.crypt(p_clave, v_hash) is distinct from v_hash then
+    perform _registrar_fallo();
+    return json_build_object('ok', false, 'error', 'clave_invalida');
+  end if;
+
+  select * into v_cafe from cafeterias where slug = p_slug for update;
+  if v_cafe.id is null then
+    return json_build_object('ok', false, 'error', 'no_existe');
+  end if;
+
+  v_nombre := v_cafe.nombre;
+  if p_nombre is not null then
+    v_nombre := btrim(regexp_replace(p_nombre, '\s+', ' ', 'g'));
+    if char_length(v_nombre) not between 2 and 80 then
+      return json_build_object('ok', false, 'error', 'datos_invalidos');
+    end if;
+  end if;
+  v_escuela := v_cafe.escuela;
+  if p_escuela is not null then
+    v_escuela := btrim(regexp_replace(p_escuela, '\s+', ' ', 'g'));
+    if char_length(v_escuela) not between 1 and 40 then
+      return json_build_object('ok', false, 'error', 'datos_invalidos');
+    end if;
+  end if;
+  if p_pin is not null then
+    if p_pin !~ '^[0-9]{6}$' then
+      return json_build_object('ok', false, 'error', 'pin_formato');
+    end if;
+    -- Como en el alta: ningún otro PIN (de cafetería activa o no) puede ser igual. El propio PIN se acepta y no cambia nada.
+    if exists (select 1 from cafeterias c where c.id <> v_cafe.id and c.pin_hash = extensions.crypt(p_pin, c.pin_hash)) then
+      return json_build_object('ok', false, 'error', 'pin_repetido');
+    end if;
+    v_pin_cambiado := extensions.crypt(p_pin, v_cafe.pin_hash) is distinct from v_cafe.pin_hash;
+  end if;
+  if p_tope_hora is not null and p_tope_hora not between 1 and 1000 then
+    return json_build_object('ok', false, 'error', 'tope_invalido');
+  end if;
+
+  update cafeterias set
+    nombre = v_nombre,
+    escuela = v_escuela,
+    pin_hash = case when v_pin_cambiado then extensions.crypt(p_pin, extensions.gen_salt('bf', 8)) else pin_hash end,
+    activa = coalesce(p_activa, activa),
+    tope_hora = coalesce(p_tope_hora, tope_hora)
+  where id = v_cafe.id
+  returning * into v_cafe;
+  return json_build_object('ok', true, 'cafeteria', v_cafe.nombre, 'escuela', v_cafe.escuela, 'slug', v_cafe.slug,
+                           'activa', v_cafe.activa, 'tope_hora', v_cafe.tope_hora, 'pin_cambiado', v_pin_cambiado);
+end
+$$;
+
 -- Permisos --------------------------------------------------------------------
 
 revoke all on function _meta(), _bloqueado(), _registrar_fallo(), _cafeteria_por_pin(text),
@@ -500,10 +569,10 @@ revoke all on function _meta(), _bloqueado(), _registrar_fallo(), _cafeteria_por
 
 revoke all on function entrar(text), crear_venta(text), reclamar(text, uuid), tarjeta(uuid),
   pedir_canje(uuid), canjear(text, text), metricas(text, int), crear_cafeteria(text, text, text, text),
-  eliminar_cafeteria(text, text)
+  eliminar_cafeteria(text, text), editar_cafeteria(text, text, text, text, text, boolean, int)
   from public, anon, authenticated;
 
 grant execute on function entrar(text), crear_venta(text), reclamar(text, uuid), tarjeta(uuid),
   pedir_canje(uuid), canjear(text, text), metricas(text, int), crear_cafeteria(text, text, text, text),
-  eliminar_cafeteria(text, text)
+  eliminar_cafeteria(text, text), editar_cafeteria(text, text, text, text, text, boolean, int)
   to anon, authenticated;

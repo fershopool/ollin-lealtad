@@ -45,7 +45,7 @@
       </table>
     </div>
 
-    <p class="aviso">Ventas = QR generados por la cajera. No se ven las ventas donde la cajera no tocó el botón. Reclamos = QR escaneados por clientes.</p>
+    <p class="aviso">Ventas = QR generados desde caja. No se ven las ventas donde el personal de caja no tocó el botón. Reclamos = QR escaneados por clientes.</p>
 
     <section id="nueva" class="oculto">
       <h2>Nueva cafetería</h2>
@@ -55,7 +55,7 @@
         <label for="n-escuela">Escuela</label>
         <input id="n-escuela" class="campo campo-texto" type="text" maxlength="40" list="escuelas" required>
         <datalist id="escuelas"></datalist>
-        <label for="n-pin">PIN de la cajera (6 números)</label>
+        <label for="n-pin">PIN de la cafetería (6 números)</label>
         <div class="fila-pin">
           <input id="n-pin" class="campo" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required>
           <button id="n-generar" class="btn btn-chico btn-claro" type="button">Generar</button>
@@ -66,9 +66,36 @@
       <p id="n-error" class="error oculto" role="alert"></p>
     </section>
 
+    <section id="editar" class="oculto">
+      <h2>Editar cafetería</h2>
+      <p class="letra-chica">Cambia el nombre, la escuela, el PIN, si está activa o su máximo de QR por hora. Una cafetería desactivada no puede entrar con su PIN, pero conserva su historial.</p>
+      <form id="form-editar" autocomplete="off">
+        <label for="m-cual">Cafetería</label>
+        <select id="m-cual" class="campo campo-texto" required></select>
+        <label for="m-nombre">Nombre</label>
+        <input id="m-nombre" class="campo campo-texto" type="text" maxlength="80" required>
+        <label for="m-escuela">Escuela</label>
+        <input id="m-escuela" class="campo campo-texto" type="text" maxlength="40" list="escuelas" required>
+        <label for="m-pin">Nuevo PIN (6 números; vacío = no cambiarlo)</label>
+        <div class="fila-pin">
+          <input id="m-pin" class="campo" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6">
+          <button id="m-generar" class="btn btn-chico btn-claro" type="button">Generar</button>
+        </div>
+        <div class="fila-casilla">
+          <input id="m-activa" type="checkbox">
+          <label for="m-activa" class="casilla">Activa: puede entrar con su PIN</label>
+        </div>
+        <label for="m-tope">Máximo de QR por hora (1 a 1000)</label>
+        <input id="m-tope" class="campo campo-texto" type="number" min="1" max="1000" step="1" required>
+        <button id="m-guardar" class="btn btn-oro" type="submit">Guardar cambios</button>
+      </form>
+      <p id="m-ok" class="aviso oculto" role="status"></p>
+      <p id="m-error" class="error oculto" role="alert"></p>
+    </section>
+
     <section id="eliminar" class="oculto">
       <h2>Eliminar cafetería</h2>
-      <p class="letra-chica">Solo se puede eliminar una que aún no tenga ventas, sellos ni canjes (por ejemplo, una dada de alta por error).</p>
+      <p class="letra-chica">Solo se puede eliminar una que aún no tenga ventas, sellos ni canjes (por ejemplo, una dada de alta por error). Si ya tiene historial, desactívala en «Editar cafetería».</p>
       <form id="form-eliminar">
         <label for="e-cual">Cafetería</label>
         <select id="e-cual" class="campo campo-texto" required></select>

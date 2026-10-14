@@ -3,7 +3,7 @@
 Módulo de lealtad de OLLIN; Quetzalitos es su primer programa. Backend = solo Postgres de Supabase. El cliente web llama funciones por RPC con la llave pública del proyecto (publishable o anon): `POST {url}/rest/v1/rpc/<funcion>` con cuerpo JSON `{"p_...": ...}`.
 
 ## Reglas generales
-- Toda función pública (las 9 que llama el cliente) es `security definer`, `set search_path = public, extensions, pg_temp`, y devuelve `json`. Las auxiliares internas empiezan con `_` y el cliente no puede ejecutarlas.
+- Toda función pública (las 10 que llama el cliente) es `security definer`, `set search_path = public, extensions, pg_temp`, y devuelve `json`. Las auxiliares internas empiezan con `_` y el cliente no puede ejecutarlas.
 - Los errores de negocio NO se lanzan con `raise`: se devuelven como `{"ok":false,"error":"<codigo>"}`. Motivo: un `raise` revierte la transacción y borraría el registro de intentos fallidos. Éxito: `{"ok":true, ...}`.
 - Tablas con RLS activo, sin políticas, y `revoke all` a `anon`/`authenticated`. El cliente solo entra por las funciones.
 - Tiempos con `now()`. PIN y clave admin con `extensions.crypt(x, extensions.gen_salt('bf'))`; nunca en claro.
@@ -28,9 +28,10 @@ Módulo de lealtad de OLLIN; Quetzalitos es su primer programa. Backend = solo P
 | `tarjeta(p_tarjeta uuid)` | `{ok, tarjeta_id, sellos, meta, premio_listo}` | `tarjeta_invalida` |
 | `pedir_canje(p_tarjeta uuid)` | `{ok, codigo, expira_en}` | `tarjeta_invalida`, `faltan_sellos` |
 | `canjear(p_pin text, p_codigo text)` | `{ok, cafeteria}` | `pin_invalido`, `bloqueado`, `canje_invalido`, `canje_usado`, `canje_vencido`, `faltan_sellos` |
-| `metricas(p_clave text, p_dias int default null)` | `{ok, filas:[{cafeteria, escuela, slug, ventas, reclamos, canjes, tarjetas_nuevas}]}` | `clave_invalida`, `bloqueado` |
+| `metricas(p_clave text, p_dias int default null)` | `{ok, filas:[{cafeteria, escuela, slug, activa, tope_hora, ventas, reclamos, canjes, tarjetas_nuevas}]}` | `clave_invalida`, `bloqueado` |
 | `crear_cafeteria(p_clave text, p_nombre text, p_escuela text, p_pin text)` | `{ok, cafeteria, escuela, slug}` (nunca devuelve el PIN) | `clave_invalida`, `bloqueado`, `datos_invalidos`, `pin_formato`, `pin_repetido` |
 | `eliminar_cafeteria(p_clave text, p_slug text)` | `{ok, cafeteria, escuela}` | `clave_invalida`, `bloqueado`, `no_existe`, `con_historial` (con `ventas`, `reclamos`, `canjes`) |
+| `editar_cafeteria(p_clave text, p_slug text, p_nombre text default null, p_escuela text default null, p_pin text default null, p_activa boolean default null, p_tope_hora int default null)` | `{ok, cafeteria, escuela, slug, activa, tope_hora, pin_cambiado}` | `clave_invalida`, `bloqueado`, `no_existe`, `datos_invalidos`, `pin_formato`, `pin_repetido`, `tope_invalido` |
 
 `sellos` en las respuestas = saldo actual (puede ser mayor que `meta`; la UI muestra `min(sellos, meta)`).
 
@@ -49,8 +50,9 @@ Módulo de lealtad de OLLIN; Quetzalitos es su primer programa. Backend = solo P
 - **metricas**: valida `crypt(p_clave, config.admin_hash)` (si no hay `admin_hash` → `clave_invalida`). Una fila por cafetería (incluye ceros). `ventas` = tokens creados; `reclamos` = sellos; `canjes` = canjes con `usado_en`; `tarjetas_nuevas` = tarjetas cuyo primer sello fue en esa cafetería. Cada conteo filtra por la fecha de su propio evento si `p_dias` no es null (se limita a 1–36500 días).
 - **crear_cafeteria**: mismo candado, bloqueo y clave que `metricas` (clave incorrecta → fallo registrado). Normaliza los espacios (cualquier racha de espacios, tabuladores o saltos de línea pasa a un solo espacio y se recorta); `nombre` de 2 a 80 caracteres y `escuela` de 1 a 40 (si no, `datos_invalidos`); el PIN debe ser exactamente 6 dígitos (`pin_formato`) y distinto del de cualquier otra cafetería, activa o no (`pin_repetido`: dos PIN iguales se anulan entre sí). El `slug` sale de nombre + escuela sin acentos (áàäâãéèëêíìïîóòöôõúùüûñç) y con guiones (`cafeteria` si no queda ninguna letra) y recibe `-2`, `-3`… si ya existe. El PIN se guarda con hash bcrypt (coste 8). El panel (`/panel/`) la usa con la clave admin que ya tiene en memoria y ofrece generar un PIN aleatorio en el navegador.
 - **eliminar_cafeteria**: mismo candado, bloqueo y clave que `metricas`. Busca la cafetería por `slug` (`no_existe` si no hay; no cuenta como fallo). Solo la borra si no tiene tokens (ventas), sellos ni canjes con `cafeteria_id` de ella; con historial devuelve `con_historial` y los tres conteos, porque borrarlo quitaría sellos a las tarjetas de los clientes (y un canje borrado devolvería los sellos ya canjeados). Sin historial el PIN y el slug quedan libres. Desactivar (`activa = false`) sigue siendo por SQL.
+- **editar_cafeteria**: mismo candado, bloqueo y clave que `metricas`. Busca por `slug` (`no_existe` sin fallo). Los parámetros `null` no se tocan; el `slug` nunca cambia y el historial (tokens, sellos, canjes) tampoco. Valida TODO antes de escribir (un dato inválido no deja cambios a medias): nombre y escuela con la misma normalización y límites que el alta (`datos_invalidos`); PIN de 6 dígitos (`pin_formato`) distinto del de cualquier OTRA cafetería, activa o no (`pin_repetido`; el propio PIN se acepta y da `pin_cambiado = false`); `tope_hora` entero de 1 a 1000 (`tope_invalido`). `activa = false` impide entrar, vender y canjear con su PIN (`_cafeteria_por_pin` solo ve cafeterías activas) pero conserva el historial y las métricas siguen mostrándola; con `true` vuelve a funcionar. Cambiar el PIN invalida el anterior al instante. Reintentar con el mismo PIN nuevo tras perder la respuesta es seguro (`pin_cambiado = false`).
 
-Limitación documentada: ventas = QR generados por la cajera. No se ven ventas donde la cajera no tocó el botón.
+Limitación documentada: ventas = QR generados desde caja. No se ven ventas donde el personal de caja no tocó el botón.
 
 ## Cliente (compartido por /caja, /c y /panel)
 - `config.js`: `window.QUETZALITO = { url: "https://TU-PROYECTO.supabase.co", key: "TU-LLAVE-PUBLICA" }` (la publishable `sb_publishable_...` o la anon `eyJ...`; nunca la secret/service_role).
@@ -61,4 +63,4 @@ Limitación documentada: ventas = QR generados por la cajera. No se ven ventas d
 - Marca («selva neón»): verdes (`#0A2E22`, `#137A5B`, `#1FB67A`), rosa mexicano `#E4007C`, naranja `#FF8A1F` y azul mexicano `#1F5BD6`. Alto contraste, móvil primero, botones de al menos 64 px.
 - URL del QR = `new URL("../c/", location.href).href + "#" + codigo` (funciona bajo cualquier ruta; el código va en el hash, que no viaja al servidor).
 - La tarjeta del cliente vive en `localStorage["quetzalito.tarjeta"]` (uuid). Sin nombre ni correo.
-- El PIN de la cajera se guarda en `sessionStorage`; la clave admin solo en memoria.
+- El PIN de la cafetería (el que escribe el personal de caja) se guarda en `sessionStorage`; la clave admin solo en memoria.

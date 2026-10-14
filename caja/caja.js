@@ -1,4 +1,4 @@
-// Pantalla de la cajera. El PIN vive en sessionStorage y en memoria; nunca en el código.
+// Pantalla de caja. El PIN vive en sessionStorage y en memoria; nunca en el código.
 (function () {
   "use strict";
 

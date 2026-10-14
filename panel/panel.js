@@ -36,11 +36,26 @@
   const errorElim = $('e-error');
   let pendiente = null; // baja que espera confirmación: { slug, texto }
   let ultimaAlta = null; // slug de la última cafetería creada: su aviso lleva el PIN
+  let ultimaEdicionPin = null; // slug de la última cafetería con PIN cambiado: su aviso lleva el PIN
+  const seccionEditar = $('editar');
+  const formEditar = $('form-editar');
+  const selMCual = $('m-cual');
+  const inMNombre = $('m-nombre');
+  const inMEscuela = $('m-escuela');
+  const inMPin = $('m-pin');
+  const inMActiva = $('m-activa');
+  const inMTope = $('m-tope');
+  const btnGuardar = $('m-guardar');
+  const okEditar = $('m-ok');
+  const errorEditar = $('m-error');
+  let filasActuales = []; // últimas filas de métricas: alimentan la sección de edición
+  let rellenarTrasGuardar = false; // el siguiente refresco vuelve a llenar el formulario de edición con datos del servidor
 
   // Las secciones de alta y baja solo se ven con la clave admin ya validada.
   function mostrarAdmin(visible) {
     seccionNueva.classList.toggle('oculto', !visible);
     seccionEliminar.classList.toggle('oculto', !visible);
+    seccionEditar.classList.toggle('oculto', !visible);
     if (!visible) { // sin clave no queda una confirmación pendiente
       pendiente = null;
       cajaConfirmar.classList.add('oculto');
@@ -68,8 +83,32 @@
     return ventas > 0 ? Math.round((reclamos / ventas) * 100) + ' %' : '—';
   }
 
+  // Nombre tal como se ve en tablas y listas; «desactivada» solo si la fila lo indica.
+  function etiqueta(f) {
+    return f.cafeteria + (f.activa === false ? ' · desactivada' : '');
+  }
+
+  function opciones(filas) {
+    return filas.map((f) => {
+      const o = document.createElement('option');
+      o.value = f.slug;
+      o.textContent = etiqueta(f) + ' (' + f.escuela + ')';
+      return o;
+    });
+  }
+
+  // Rellena la sección de edición con la cafetería elegida (nombre real, sin el texto «desactivada»).
+  function rellenarEditar() {
+    const f = filasActuales.find((x) => x.slug === selMCual.value);
+    inMNombre.value = f ? f.cafeteria : '';
+    inMEscuela.value = f ? f.escuela : '';
+    inMActiva.checked = f ? f.activa !== false : false;
+    inMTope.value = f ? (f.tope_hora ?? '') : '';
+  }
+
   function pintar(filas) {
     const total = { ventas: 0, reclamos: 0, canjes: 0, tarjetas_nuevas: 0 };
+    filasActuales = filas;
     cuerpo.replaceChildren();
     for (const f of filas) {
       total.ventas += f.ventas;
@@ -77,7 +116,7 @@
       total.canjes += f.canjes;
       total.tarjetas_nuevas += f.tarjetas_nuevas;
       const tr = document.createElement('tr');
-      [f.cafeteria, f.escuela, f.ventas, f.reclamos, adopcion(f.reclamos, f.ventas), f.canjes, f.tarjetas_nuevas]
+      [etiqueta(f), f.escuela, f.ventas, f.reclamos, adopcion(f.reclamos, f.ventas), f.canjes, f.tarjetas_nuevas]
         .forEach((v) => tr.appendChild(celda(v)));
       cuerpo.appendChild(tr);
     }
@@ -95,14 +134,19 @@
     }));
     // Lista para la baja: se conserva la elegida si sigue existiendo.
     const previa = selCual.value;
-    selCual.replaceChildren(...filas.map((f) => {
-      const o = document.createElement('option');
-      o.value = f.slug;
-      o.textContent = f.cafeteria + ' (' + f.escuela + ')';
-      return o;
-    }));
+    selCual.replaceChildren(...opciones(filas));
     if ([...selCual.options].some((o) => o.value === previa)) selCual.value = previa;
     btnBorrar.disabled = filas.length === 0;
+    // Lista para editar: se conserva la elegida si sigue existiendo; el PIN escrito se borra si cambia la cafetería.
+    const previaEditar = selMCual.value;
+    selMCual.replaceChildren(...opciones(filas));
+    if ([...selMCual.options].some((o) => o.value === previaEditar)) selMCual.value = previaEditar;
+    if (selMCual.value !== previaEditar) inMPin.value = '';
+    // Los campos se rellenan al cargar, al cambiar de cafetería y tras guardar; un refresco por alta o baja no pisa lo que se está escribiendo.
+    if (selMCual.value !== previaEditar || rellenarTrasGuardar) {
+      rellenarEditar();
+      rellenarTrasGuardar = false;
+    }
   }
 
   // sinParpadeo: al refrescar tras un alta la tabla se queda a la vista, para que la página no brinque ni se pierda el aviso del PIN.
@@ -144,6 +188,15 @@
     inPin.value = pinAleatorio();
   });
 
+  $('m-generar').addEventListener('click', () => {
+    inMPin.value = pinAleatorio();
+  });
+
+  selMCual.addEventListener('change', () => {
+    inMPin.value = ''; // un PIN escrito para una cafetería no se aplica a otra
+    rellenarEditar();
+  });
+
   formNueva.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!clave) return;
@@ -152,6 +205,7 @@
     errorNueva.classList.add('oculto');
     okElim.classList.add('oculto');
     errorElim.classList.add('oculto');
+    errorEditar.classList.add('oculto'); // el aviso de una edición (puede llevar un PIN que no se vuelve a ver) se queda
     btnCrear.disabled = true;
     const res = await Q.rpc('crear_cafeteria', {
       p_clave: clave, p_nombre: inNombre.value.trim(), p_escuela: inEscuela.value.trim(), p_pin: pin
@@ -177,7 +231,7 @@
     negrita.textContent = pin;
     okNueva.replaceChildren(
       'Cafetería «' + res.cafeteria + '» (' + res.escuela + ') creada. PIN: ', negrita,
-      '. Anótalo y entrégalo a la cajera: no se puede volver a consultar.'
+      '. Anótalo y entrégalo al personal de caja: no se puede volver a consultar.'
     );
     ultimaAlta = res.slug;
     okNueva.classList.remove('oculto');
@@ -198,6 +252,7 @@
     preguntaEl.textContent = '¿Eliminar «' + opcion.textContent + '»? No se puede deshacer y su PIN dejará de funcionar.';
     okElim.classList.add('oculto');
     errorElim.classList.add('oculto');
+    errorEditar.classList.add('oculto');
     cajaConfirmar.classList.remove('oculto');
     btnNo.focus(); // el foco cae en «Cancelar»: confirmar exige un toque deliberado
   });
@@ -231,7 +286,7 @@
       if (codigo === 'con_historial') {
         errorElim.textContent = '«' + texto + '» ya tiene ' + cuenta(res.ventas, 'venta', 'ventas') + ', '
           + cuenta(res.reclamos, 'sello', 'sellos') + ' y ' + cuenta(res.canjes, 'canje', 'canjes')
-          + '. No se puede eliminar sin borrar el historial de las tarjetas de los clientes.';
+          + '. No se puede eliminar sin borrar el historial de las tarjetas de los clientes; si ya no se usa, desactívala en «Editar cafetería».';
       } else if (codigo === 'red') {
         errorElim.textContent = 'No se pudo confirmar la respuesta. Revisa la tabla: si la cafetería ya no aparece, se eliminó.';
       } else {
@@ -243,8 +298,64 @@
     }
     // El aviso del PIN solo se quita si era el de esta misma cafetería: ese PIN no se puede volver a consultar.
     if (slug === ultimaAlta) okNueva.classList.add('oculto');
+    if (slug === ultimaEdicionPin) {
+      okEditar.classList.add('oculto');
+      ultimaEdicionPin = null;
+    }
     okElim.textContent = 'Cafetería «' + res.cafeteria + '» (' + res.escuela + ') eliminada.';
     okElim.classList.remove('oculto');
+    consultar(true);
+  });
+
+  // Edición: solo viaja lo que se cambia (los null no tocan nada). El PIN nuevo se muestra una sola vez, como en el alta.
+  formEditar.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const opcion = selMCual.selectedOptions[0];
+    if (!clave || !opcion) return;
+    const slug = opcion.value;
+    const pin = inMPin.value || null;
+    errorEditar.classList.add('oculto'); // el aviso anterior (puede llevar un PIN sin anotar) se queda hasta que haya otro resultado
+    errorNueva.classList.add('oculto');
+    okElim.classList.add('oculto');
+    errorElim.classList.add('oculto');
+    btnGuardar.disabled = true;
+    const res = await Q.rpc('editar_cafeteria', {
+      p_clave: clave, p_slug: slug, p_nombre: inMNombre.value.trim(), p_escuela: inMEscuela.value.trim(),
+      p_pin: pin, p_activa: inMActiva.checked, p_tope_hora: Number(inMTope.value)
+    });
+    btnGuardar.disabled = false;
+    if (!res || !res.ok) {
+      const codigo = (res && res.error) || 'red';
+      if (codigo === 'clave_invalida') {
+        clave = null;
+        mostrarAdmin(false);
+        tabla.classList.add('oculto');
+        mostrarError(codigo);
+        return;
+      }
+      errorEditar.textContent = codigo === 'red'
+        ? 'No se pudo confirmar la respuesta. Revisa la tabla e inténtalo de nuevo.'
+        : Q.msg(codigo);
+      errorEditar.classList.remove('oculto');
+      if (codigo === 'red' || codigo === 'no_existe') consultar(true);
+      return;
+    }
+    const partes = ['Cambios guardados en «' + res.cafeteria + '» (' + res.escuela + ').'];
+    if (res.pin_cambiado) {
+      const negrita = document.createElement('strong');
+      negrita.textContent = pin;
+      partes.push(' PIN nuevo: ', negrita, '. Anótalo y entrégalo al personal de caja: no se puede volver a consultar.');
+    }
+    if (!res.pin_cambiado && ultimaEdicionPin !== null && !okEditar.classList.contains('oculto')) {
+      okEditar.append(document.createElement('br'), partes[0]); // hay un PIN sin anotar a la vista: se añade debajo, no se borra
+    } else {
+      okEditar.replaceChildren(...partes);
+      ultimaEdicionPin = res.pin_cambiado ? slug : null;
+    }
+    inMPin.value = '';
+    okEditar.classList.remove('oculto');
+    okEditar.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    rellenarTrasGuardar = true;
     consultar(true);
   });
 
