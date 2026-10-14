@@ -1,4 +1,4 @@
-:root { --crema: #F1EBD0; --cafe: #34241C; --verde: #2E6458; --naranja: #EA9C1E; }
+:root { --crema: #FFF8E5; --cafe: #34241C; --verde: #2E6458; --naranja: #EA9C1E; }
 @page { size: A4; margin: 12mm; }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--crema); color: var(--cafe); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.35; }
@@ -18,6 +18,8 @@ body { margin: 0; background: var(--crema); color: var(--cafe); font-family: sys
 .qr-caja svg { display: block; width: 100%; height: auto; }
 .url { font-size: 1rem; text-align: center; word-break: break-all; margin: 0 0 4px; }
 .etiqueta { font-size: 1rem; margin: 0 0 1em; opacity: .7; }
+.logo-letrero { display: block; width: 62mm; height: auto; margin: 0 auto 6mm; }
+.logo-hoja2 { display: block; width: 26mm; height: auto; margin: 0 auto 4mm; }
 @media (max-width: 700px) {
   .hoja { padding: 8mm; min-height: 0; }
   .letrero h1 { font-size: 2.2rem; }
@@ -27,7 +29,8 @@ body { margin: 0; background: var(--crema); color: var(--cafe); font-family: sys
   .caja ol { font-size: 1rem; }
 }
 @media print {
-  body, .hoja { background: #FFFFFF; color: #000000; }
+  body { background: #FFFFFF; }
+  .hoja { background: var(--crema); color: #000000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .hoja { width: auto; max-width: none; min-height: 0; height: 273mm; margin: 0; padding: 0; box-shadow: none; }
   .barra, .solo-pantalla { display: none; }
 }

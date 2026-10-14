@@ -1,5 +1,5 @@
 :root {
-  --crema: #F1EBD0;
+  --crema: #FFF8E5;
   --cafe: #34241C;
   --verde: #2E6458;
   --naranja: #EA9C1E;
@@ -136,3 +136,8 @@ label { display: block; font-weight: 700; margin-bottom: 8px; }
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
+
+/* Logo oficial de Quetzalitos. */
+.logo { margin: 8px 0 12px; text-align: center; }
+.logo img { display: block; margin: 0 auto; width: 120px; height: auto; }
+.logo-chico img { width: 72px; }
