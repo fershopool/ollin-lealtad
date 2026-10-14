@@ -120,6 +120,12 @@
     var fin = new Date(r.expira_en).getTime();
     mostrar("venta");
     detenerVenta();
+    // Después de detenerVenta(), que quita la clase: si no, la barra nunca arrancaría.
+    var barra = $("barra-venta");
+    barra.classList.remove("corre");
+    void barra.offsetWidth;
+    barra.style.animationDuration = Math.max(fin - Date.now(), 0) + "ms";
+    barra.classList.add("corre");
     function tick() {
       var resta = Math.ceil((fin - Date.now()) / 1000);
       if (resta <= 0) return volverAMenu("Venció. Haz una nueva venta.", "error");
@@ -132,6 +138,7 @@
   function detenerVenta() {
     if (timerVenta) clearInterval(timerVenta);
     timerVenta = null;
+    $("barra-venta").classList.remove("corre");
   }
 
   // Dibuja el QR; si la librería no cargó, avisa en vez de fallar en silencio.

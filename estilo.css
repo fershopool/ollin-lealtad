@@ -1,143 +1,317 @@
+/* Quetzalitos · sistema visual «selva neón»: verdes profundos, rosa mexicano, naranja cempasúchil y azul mexicano, con grecas y los personajes de la marca. */
 :root {
-  --crema: #FFF8E5;
-  --cafe: #34241C;
-  --verde: #2E6458;
-  --naranja: #EA9C1E;
-  --rojo: #8B1E1E;
-  --blanco: #FFFFFF;
-  --texto-suave: #5A4638;
+  --noche: #04170F;
+  --selva: #0A2E22;
+  --selva-2: #0F4030;
+  --jade: #137A5B;
+  --jade-osc: #0E5E46;
+  --esmeralda: #1FB67A;
+  --menta: #8DF0C0;
+  --lima: #C6FF7A;
+  --hielo: #F1FFF8;
+  --niebla: #A8D6C2;
+  --rosa: #E4007C;
+  --rosa-osc: #B80066;
+  --rosa-neon: #FF4DAA;
+  --rosa-claro: #FFB3DB;
+  --naranja: #FF8A1F;
+  --naranja-osc: #E8590C;
+  --naranja-claro: #FFC48A;
+  --azul: #1F5BD6;
+  --azul-osc: #14409E;
+  --azul-neon: #4C8DFF;
+  --azul-claro: #B3D0FF;
+  --alerta: #C62F25;
+  --serif: "Instrument Serif", "Iowan Old Style", Palatino, Georgia, serif;
+  --sans: "DM Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --paso: 12px;
 }
 
 * { box-sizing: border-box; }
+html { overflow-x: clip; color-scheme: dark; background: var(--noche); }
 
 body {
   margin: 0;
-  background: var(--crema);
-  color: var(--cafe);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--hielo);
+  font-family: var(--sans);
   font-size: 18px;
   line-height: 1.4;
+  background:
+    radial-gradient(75% 38% at 100% 0%, rgba(228, 0, 124, .32) 0%, rgba(228, 0, 124, 0) 70%),
+    radial-gradient(70% 30% at 0% 30%, rgba(76, 141, 255, .24) 0%, rgba(76, 141, 255, 0) 70%),
+    radial-gradient(70% 30% at 100% 68%, rgba(255, 138, 31, .18) 0%, rgba(255, 138, 31, 0) 70%),
+    radial-gradient(85% 42% at 0% 100%, rgba(31, 182, 122, .30) 0%, rgba(31, 182, 122, 0) 70%),
+    linear-gradient(180deg, var(--selva) 0%, var(--noche) 100%);
+}
+/* Trama de grecas escalonadas, apenas visible */
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background: var(--menta); opacity: .07;
+  -webkit-mask: url(img/trama.svg) 0 0 / 96px auto repeat;
+  mask: url(img/trama.svg) 0 0 / 96px auto repeat;
 }
 
 main {
-  max-width: 480px;
-  min-height: 100vh;
-  margin: 0 auto;
-  padding: 16px;
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column;
+  max-width: 480px; min-height: 100vh; margin: 0 auto; padding: 20px 16px 36px;
 }
 
-h1 { font-size: 1.7rem; margin: 8px 0 16px; }
+h1, h2 { font-family: var(--serif); font-weight: 400; letter-spacing: .01em; color: var(--hielo); }
+h1 { font-size: 2.3rem; line-height: 1.05; margin: 8px 0 16px; text-shadow: 0 0 28px rgba(141, 240, 192, .30); }
+h2 { font-size: 1.6rem; margin: 0 0 8px; }
+label { display: block; margin-bottom: 8px; color: var(--menta); font-size: .8rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
 
-label { display: block; font-weight: 700; margin-bottom: 8px; }
-
-/* Botones: mínimo 64 px de alto. */
-.btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: 64px;
-  padding: 0 20px;
-  margin: 0 0 16px;
-  border: 0;
-  border-radius: 14px;
-  background: var(--verde);
-  color: var(--blanco);
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
+/* ---------- Grecas escalonadas teñidas con degradado ---------- */
+.greca {
+  height: 16px;
+  background: linear-gradient(90deg, var(--rosa) 0%, var(--naranja) 24%, var(--lima) 48%, var(--esmeralda) 70%, var(--azul-neon) 100%);
+  -webkit-mask: url(img/greca.svg) repeat-x left bottom / auto 100%;
+  mask: url(img/greca.svg) repeat-x left bottom / auto 100%;
 }
-.btn:disabled { opacity: .5; cursor: default; }
-.btn:focus-visible { outline: 4px solid var(--naranja); outline-offset: 2px; }
-.btn-grande { min-height: 112px; font-size: 1.5rem; }
-.btn-claro { background: var(--blanco); color: var(--cafe); border: 2px solid var(--cafe); }
-.btn-chico { width: auto; min-width: 120px; margin: 0; }
+.cabecera { margin: -20px calc(50% - 50vw) 0; box-shadow: 0 10px 30px -6px rgba(228, 0, 124, .45); }
+.pie { margin: auto calc(50% - 50vw) -36px; padding-top: 28px; }
+.pie .greca { transform: scaleY(-1); }
 
-.fila { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-
-/* Campo numérico grande para PIN y códigos. */
-.campo {
-  display: block;
-  width: 100%;
-  min-height: 64px;
-  margin-bottom: 16px;
-  padding: 8px;
-  border: 3px solid var(--cafe);
-  border-radius: 12px;
-  background: var(--blanco);
-  color: var(--cafe);
-  font: inherit;
-  font-size: 2rem;
-  text-align: center;
-}
-
-.tarjeta {
-  background: var(--blanco);
-  border-radius: 16px;
-  padding: 20px;
-  margin-bottom: 16px;
-  box-shadow: 0 2px 6px rgba(52, 36, 28, .15);
-}
-
-/* Mensajes: se anuncian con aria-live en el HTML. */
-.aviso, .error {
-  border-radius: 12px;
-  padding: 14px;
-  margin: 12px 0;
-  font-weight: 600;
-}
-.aviso { background: var(--verde); color: var(--blanco); }
-.error { background: var(--rojo); color: var(--blanco); }
-
-.oculto { display: none !important; }
-.centro { text-align: center; }
-.letra-chica { font-size: .85rem; color: var(--texto-suave); }
-
-/* QR: fondo blanco y margen; el svg ocupa el ancho, con máximo 320 px. */
-.qr-caja {
-  max-width: 320px;
-  margin: 0 auto 16px;
-  padding: 16px;
-  background: var(--blanco);
-}
-.qr-caja svg { display: block; width: 100%; height: auto; }
-
-.cuenta { font-size: 2rem; font-weight: 700; text-align: center; margin: 8px 0 16px; font-variant-numeric: tabular-nums; }
-
-.exito {
-  background: var(--verde);
-  color: var(--blanco);
-  border-radius: 20px;
-  padding: 40px 20px;
-  margin-bottom: 16px;
-  text-align: center;
-  font-size: 2rem;
-  font-weight: 800;
-}
-
-/* Sellos de la tarjeta del cliente. */
-.sellos { margin: 8px 0 16px; }
-.sello {
-  display: inline-block;
-  width: 44px;
-  height: 44px;
-  margin: 6px;
-  border: 3px solid var(--cafe);
-  border-radius: 50%;
-  box-sizing: border-box;
-}
-.sello.lleno { background: var(--naranja); }
-
-/* Código de canje de 6 dígitos, enorme. */
-.codigo {
-  font-size: 4.5rem;
-  font-weight: 800;
-  letter-spacing: .12em;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-
-/* Logo oficial de Quetzalitos. */
+/* ---------- Logo sobre un orbe luminoso ---------- */
 .logo { margin: 8px 0 12px; text-align: center; }
 .logo img { display: block; margin: 0 auto; width: 120px; height: auto; }
 .logo-chico img { width: 72px; }
+.logo-halo { position: relative; display: grid; place-items: center; width: 272px; height: 272px; margin: 10px auto 8px; }
+.logo-halo::before {
+  content: ""; position: absolute; inset: 12px; border-radius: 50%; border: 5px solid transparent;
+  background:
+    radial-gradient(circle at 50% 36%, #FFFFFF 0%, #F1FFF8 52%, #CDF7E3 100%) padding-box,
+    conic-gradient(from 210deg, var(--rosa-neon), var(--naranja), var(--lima), var(--azul-neon), var(--rosa-neon)) border-box;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, .10), 0 0 34px 8px rgba(228, 0, 124, .45), 0 0 80px 14px rgba(76, 141, 255, .30), 0 0 110px 22px rgba(31, 182, 122, .30), inset 0 -12px 26px rgba(31, 182, 122, .20);
+}
+.logo-halo::after {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  border: 2px dashed rgba(255, 196, 138, .70);
+  animation: giro 80s linear infinite;
+}
+.logo-halo img { position: relative; z-index: 1; width: 208px; height: auto; }
+.logo-halo.logo-mediano { width: 216px; height: 216px; }
+.logo-halo.logo-mediano img { width: 168px; }
+@keyframes giro { to { transform: rotate(360deg); } }
+
+/* ---------- Botones de cristal con brillo ---------- */
+.btn {
+  position: relative; overflow: hidden;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  width: 100%; min-height: 64px; margin: 0 0 16px; padding: 0 22px;
+  border: 0; border-radius: 18px;
+  background: linear-gradient(135deg, var(--jade) 0%, var(--jade-osc) 100%);
+  color: #FFFFFF;
+  font: inherit; font-weight: 700; font-size: 1.1rem; letter-spacing: .02em; text-decoration: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .30), 0 10px 26px -8px rgba(31, 182, 122, .70), 0 0 0 1px rgba(141, 240, 192, .45);
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .2s ease, filter .2s ease;
+}
+.btn:hover { filter: brightness(1.10); }
+.btn:active { transform: translateY(2px) scale(.99); }
+.btn:disabled { opacity: .5; cursor: default; transform: none; filter: grayscale(.4); }
+.btn:focus-visible { outline: 3px solid var(--lima); outline-offset: 3px; }
+.btn-oro, .btn-rosa {
+  background: linear-gradient(135deg, var(--rosa) 0%, var(--rosa-osc) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), 0 10px 28px -8px rgba(228, 0, 124, .85), 0 0 0 1px rgba(255, 196, 138, .70);
+}
+.btn-azul {
+  background: linear-gradient(135deg, #2F6BE6 0%, var(--azul-osc) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .30), 0 10px 28px -8px rgba(76, 141, 255, .80), 0 0 0 1px rgba(179, 208, 255, .60);
+}
+.btn-claro {
+  background: rgba(76, 141, 255, .16); color: var(--hielo);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .18), 0 0 0 1px rgba(179, 208, 255, .50);
+  backdrop-filter: blur(8px);
+}
+.btn-grande { min-height: 124px; font-size: 1.5rem; flex-direction: column; gap: 4px; }
+.btn-chico { width: auto; min-width: 112px; min-height: 48px; margin: 0; font-size: 1rem; }
+.btn-titulo { display: block; font-family: var(--serif); font-weight: 400; font-size: 2.1rem; line-height: 1; }
+.btn-sub { display: block; font-size: .95rem; font-weight: 500; }
+.btn-con-icono { padding-left: 100px; align-items: flex-start; text-align: left; }
+.btn-con-icono::before {
+  content: ""; position: absolute; left: 24px; top: 50%; width: 56px; height: 56px; margin-top: -28px;
+  background: linear-gradient(180deg, #FFFFFF 0%, var(--menta) 100%);
+  -webkit-mask: var(--icono) center / contain no-repeat;
+  mask: var(--icono) center / contain no-repeat;
+}
+.btn-con-icono::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 10px; opacity: .28; background: #FFFFFF;
+  -webkit-mask: url(img/greca.svg) repeat-x center top / auto 100%;
+  mask: url(img/greca.svg) repeat-x center top / auto 100%;
+}
+.icono-postre { --icono: url(img/icono-postre.svg); }
+.icono-estrella { --icono: url(img/glifo-estrella.svg); }
+
+.fila { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+
+/* ---------- Campos de cristal oscuro ---------- */
+.campo {
+  display: block; width: 100%; min-height: 68px; margin-bottom: 18px; padding: 8px;
+  border: 2px solid rgba(141, 240, 192, .50); border-radius: 16px;
+  background: rgba(0, 0, 0, .38); color: var(--hielo);
+  font: inherit; font-weight: 700; font-size: 2rem; text-align: center; letter-spacing: .14em;
+  box-shadow: inset 0 3px 10px rgba(0, 0, 0, .35);
+}
+.campo:focus { outline: none; border-color: var(--lima); box-shadow: inset 0 3px 10px rgba(0, 0, 0, .35), 0 0 0 4px rgba(198, 255, 122, .30); }
+select.campo { letter-spacing: 0; font-size: 1.3rem; }
+select.campo option { background: var(--selva); color: var(--hielo); }
+
+/* ---------- Marcos de cristal con esquinas escalonadas ---------- */
+.marco, .tarjeta {
+  position: relative; margin-bottom: 26px; padding: 34px 18px 36px; color: var(--hielo);
+  background: linear-gradient(135deg, var(--rosa) 0%, var(--naranja) 26%, var(--esmeralda) 62%, var(--azul-neon) 100%);
+  clip-path: polygon(var(--paso) 0, calc(100% - var(--paso)) 0, calc(100% - var(--paso)) var(--paso), 100% var(--paso), 100% calc(100% - var(--paso)), calc(100% - var(--paso)) calc(100% - var(--paso)), calc(100% - var(--paso)) 100%, var(--paso) 100%, var(--paso) calc(100% - var(--paso)), 0 calc(100% - var(--paso)), 0 var(--paso), var(--paso) var(--paso));
+}
+.marco::before, .tarjeta::before {
+  content: ""; position: absolute; inset: 2px; z-index: 0;
+  background: linear-gradient(165deg, rgba(15, 64, 48, .97) 0%, rgba(6, 36, 27, .97) 100%);
+  clip-path: polygon(var(--paso) 0, calc(100% - var(--paso)) 0, calc(100% - var(--paso)) var(--paso), 100% var(--paso), 100% calc(100% - var(--paso)), calc(100% - var(--paso)) calc(100% - var(--paso)), calc(100% - var(--paso)) 100%, var(--paso) 100%, var(--paso) calc(100% - var(--paso)), 0 calc(100% - var(--paso)), 0 var(--paso), var(--paso) var(--paso));
+}
+.marco > *, .tarjeta > * { position: relative; z-index: 1; }
+.rotulo {
+  display: flex; align-items: center; gap: 12px; margin: 0 0 16px;
+  color: var(--naranja); font-size: .78rem; font-weight: 700; letter-spacing: .26em; text-transform: uppercase;
+}
+.rotulo::before, .rotulo::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(255, 138, 31, 0), rgba(255, 138, 31, .75)); }
+.rotulo::after { transform: scaleX(-1); }
+
+/* ---------- Mensajes ---------- */
+.aviso, .error, .tablilla {
+  position: relative; margin: 14px 0; padding: 14px 16px 14px 22px; border-radius: 14px;
+  background: rgba(76, 141, 255, .18); color: var(--hielo); font-weight: 600;
+  box-shadow: inset 0 0 0 1px rgba(179, 208, 255, .50), 0 8px 24px -10px rgba(76, 141, 255, .60);
+  backdrop-filter: blur(8px);
+}
+.aviso::before, .error::before, .tablilla::before {
+  content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 5px; border-radius: 0 4px 4px 0; background: linear-gradient(180deg, var(--naranja), var(--azul-neon));
+}
+.error { background: rgba(214, 48, 38, .36); box-shadow: inset 0 0 0 1px rgba(255, 138, 128, .75), 0 8px 24px -10px rgba(214, 48, 38, .75); }
+.error::before { background: #FF8A80; }
+.aviso.fiesta {
+  background: linear-gradient(135deg, var(--rosa) 0%, var(--naranja-osc) 100%); color: #FFFFFF;
+  font-family: var(--serif); font-weight: 400; font-size: 1.8rem; line-height: 1.1; text-align: center; padding: 20px 16px 20px 22px;
+  box-shadow: inset 0 0 0 1px rgba(255, 220, 190, .75);
+  animation: brillo-rosa 1.4s ease-in-out infinite alternate;
+}
+.aviso.fiesta::before { background: var(--lima); }
+
+.oculto { display: none !important; }
+.centro { text-align: center; }
+.letra-chica { font-size: .85rem; color: var(--niebla); text-align: center; }
+
+/* ---------- QR de la caja ---------- */
+.qr-caja {
+  position: relative; max-width: 320px; margin: 0 auto 18px; padding: 14px;
+  background: linear-gradient(#FFFFFF, #FFFFFF) padding-box, linear-gradient(135deg, var(--rosa-neon), var(--naranja) 34%, var(--esmeralda) 66%, var(--azul-neon)) border-box;
+  border: 4px solid transparent; border-radius: 20px;
+  box-shadow: 0 0 44px -6px rgba(228, 0, 124, .55), 0 0 90px -16px rgba(76, 141, 255, .55);
+}
+.qr-caja svg { display: block; width: 100%; height: auto; }
+
+/* ---------- Cuenta regresiva y barra de tiempo ---------- */
+.cuenta {
+  margin: 10px 0 8px; text-align: center; font-size: 2.6rem; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: .06em;
+  background: linear-gradient(90deg, var(--naranja-claro), var(--rosa-claro)); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent;
+}
+.barra { height: 10px; margin: 0 0 20px; border-radius: 8px; background: rgba(255, 255, 255, .12); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .20); overflow: hidden; }
+.barra i { display: block; height: 100%; width: 100%; transform-origin: left center; background: linear-gradient(90deg, var(--lima) 0%, var(--naranja) 55%, var(--rosa-neon) 100%); box-shadow: 0 0 12px rgba(255, 138, 31, .75); }
+.barra i.corre { animation-name: vence; animation-timing-function: linear; animation-fill-mode: forwards; }
+@keyframes vence { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+/* ---------- Éxito en la caja ---------- */
+.exito {
+  position: relative; margin: 24px 0 22px; padding: 38px 20px 30px; text-align: center; border-radius: 22px;
+  background: linear-gradient(rgba(6, 36, 27, .94), rgba(6, 36, 27, .94)) padding-box, linear-gradient(135deg, var(--rosa-neon), var(--naranja) 34%, var(--esmeralda) 66%, var(--azul-neon)) border-box;
+  border: 3px solid transparent;
+  box-shadow: 0 0 60px -10px rgba(228, 0, 124, .65), 0 0 80px -20px rgba(76, 141, 255, .55);
+  font-family: var(--serif); font-size: 2.4rem; line-height: 1.05; color: #FFFFFF;
+}
+.exito::before {
+  content: ""; display: block; width: 104px; height: 104px; margin: 0 auto 14px; border-radius: 50%;
+  background: url(img/quetzalcoatl.svg) center / 88% no-repeat, radial-gradient(circle at 50% 30%, #FFFFFF 0%, #EAFFF5 58%, #BDF3D8 100%);
+  box-shadow: 0 0 0 4px var(--naranja), 0 0 0 7px rgba(255, 255, 255, .18), 0 0 30px 4px rgba(255, 138, 31, .55);
+  animation: latido 1.4s ease-in-out infinite;
+}
+
+/* ---------- Fichas de sellos: un quetzalito por sello, cada ficha con su color ---------- */
+.sellos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 6px 0 18px; justify-items: center; }
+.sello:nth-child(3n+1) { --ficha: var(--rosa-neon); --ficha-glow: rgba(255, 77, 170, .60); --ficha-tenue: rgba(255, 77, 170, .42); }
+.sello:nth-child(3n+2) { --ficha: var(--naranja); --ficha-glow: rgba(255, 138, 31, .60); --ficha-tenue: rgba(255, 138, 31, .42); }
+.sello:nth-child(3n) { --ficha: var(--azul-neon); --ficha-glow: rgba(76, 141, 255, .60); --ficha-tenue: rgba(76, 141, 255, .46); }
+.sello {
+  position: relative; width: 100%; max-width: 92px; aspect-ratio: 1; border-radius: 50%;
+  background: radial-gradient(circle at 50% 30%, rgba(255, 255, 255, .12) 0%, rgba(255, 255, 255, .02) 65%), rgba(2, 14, 9, .65);
+  box-shadow: inset 0 0 0 2px var(--ficha-tenue), inset 0 8px 16px rgba(0, 0, 0, .45);
+}
+.sello::before {
+  content: ""; position: absolute; inset: 9%; background: rgba(141, 240, 192, .22);
+  -webkit-mask: url(img/quetzal.svg) center / contain no-repeat;
+  mask: url(img/quetzal.svg) center / contain no-repeat;
+}
+.sello.lleno {
+  background: radial-gradient(circle at 50% 28%, #FFFFFF 0%, #EAFFF5 58%, #BDF3D8 100%);
+  box-shadow: 0 0 0 4px var(--ficha), 0 0 0 6px rgba(255, 255, 255, .22), 0 0 26px 5px var(--ficha-glow), inset 0 -8px 14px rgba(15, 100, 70, .20), inset 0 6px 10px rgba(255, 255, 255, .9);
+}
+.sello.lleno::before { inset: 7%; background: url(img/quetzal.svg) center / contain no-repeat; -webkit-mask: none; mask: none; }
+.sello.lleno::after {
+  content: ""; position: absolute; inset: 3%; border-radius: 50%;
+  background: linear-gradient(155deg, rgba(255, 255, 255, .55) 0%, rgba(255, 255, 255, 0) 38%);
+  pointer-events: none;
+}
+.sello.nuevo { animation: sello-pop .85s cubic-bezier(.2, 1.5, .35, 1) both; }
+@keyframes sello-pop { 0% { transform: scale(.1) rotate(-70deg); opacity: 0; } 60% { transform: scale(1.22) rotate(10deg); opacity: 1; } 100% { transform: scale(1) rotate(0); } }
+
+/* El 7.º: banda del postre gratis */
+.sello.premio {
+  grid-column: 1 / -1; width: 100%; max-width: none; aspect-ratio: auto; min-height: 78px; margin-top: 4px;
+  display: flex; align-items: center; justify-content: center; padding: 8px 18px 8px 86px; text-align: center; border-radius: 18px;
+  border: 2px solid transparent;
+  background: linear-gradient(rgba(6, 36, 27, .90), rgba(6, 36, 27, .90)) padding-box, linear-gradient(135deg, var(--rosa-neon), var(--naranja)) border-box;
+  color: var(--naranja-claro); font-family: var(--serif); font-size: 1.55rem; line-height: 1.05;
+  box-shadow: 0 0 22px -6px rgba(255, 138, 31, .55);
+}
+.sello.premio::before {
+  inset: auto; left: 16px; top: 50%; width: 58px; height: 58px; margin-top: -29px; border-radius: 50%;
+  background: url(img/quetzalcoatl.svg) center / 88% no-repeat, radial-gradient(circle at 50% 30%, #FFFFFF 0%, #EAFFF5 58%, #BDF3D8 100%);
+  box-shadow: 0 0 0 3px var(--naranja), 0 0 14px 2px rgba(255, 138, 31, .45);
+  -webkit-mask: none; mask: none;
+}
+.sello.premio.listo {
+  background: linear-gradient(135deg, var(--rosa) 0%, var(--naranja-osc) 100%); color: #FFFFFF;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .65);
+  animation: brillo-rosa 1.4s ease-in-out infinite alternate;
+}
+.sello.premio.listo::before { box-shadow: 0 0 0 3px #FFFFFF, 0 0 18px 4px rgba(255, 255, 255, .55); animation: latido 1.2s ease-in-out infinite; }
+@keyframes brillo-rosa { from { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .65), 0 0 0 0 rgba(255, 77, 170, 0); } to { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .65), 0 0 30px 6px rgba(255, 77, 170, .75); } }
+@keyframes latido { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.14); } }
+
+/* ---------- Botón del premio (tarjeta del cliente) ---------- */
+.btn-premio { min-height: 96px; font-family: var(--serif); font-weight: 400; font-size: 1.9rem; line-height: 1.05; text-align: center; background: linear-gradient(135deg, var(--rosa) 0%, var(--naranja-osc) 100%); animation: brillo-rosa 1.6s ease-in-out infinite alternate; }
+.btn-premio::before {
+  content: ""; flex: none; width: 40px; height: 40px; background: #FFFFFF;
+  -webkit-mask: url(img/glifo-estrella.svg) center / contain no-repeat;
+  mask: url(img/glifo-estrella.svg) center / contain no-repeat;
+  animation: latido 1.2s ease-in-out infinite;
+}
+
+/* ---------- Código de canje: placa con degradado ---------- */
+.placa {
+  margin: 18px 0 4px; padding: 20px 14px 16px; text-align: center; border-radius: 20px;
+  background: linear-gradient(rgba(2, 14, 9, .92), rgba(2, 14, 9, .92)) padding-box, linear-gradient(135deg, var(--rosa-neon), var(--naranja) 38%, var(--esmeralda) 68%, var(--azul-neon)) border-box;
+  border: 3px solid transparent;
+  box-shadow: 0 0 44px -8px rgba(255, 77, 170, .60), 0 0 70px -14px rgba(76, 141, 255, .50);
+}
+.placa .centro { margin: 0; color: var(--menta); font-size: 1rem; letter-spacing: .12em; text-transform: uppercase; }
+.placa .barra { margin: 10px 6px 10px; }
+.codigo {
+  margin: 6px 0 4px; text-align: center; font-weight: 800; font-size: min(3.8rem, 14vw); line-height: 1.1; letter-spacing: .1em; font-variant-numeric: tabular-nums;
+  background: linear-gradient(90deg, var(--naranja-claro), var(--rosa-claro) 50%, var(--azul-claro)); -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent;
+}
+
+/* ---------- Respeto a quien prefiere menos movimiento ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .logo-halo::after, .sello.premio.listo, .sello.premio.listo::before, .exito::before, .aviso.fiesta, .sello.nuevo, .btn-premio, .btn-premio::before { animation: none; }
+  .btn { transition: none; }
+}

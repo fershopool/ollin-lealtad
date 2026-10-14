@@ -5,27 +5,31 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
   <meta name="apple-mobile-web-app-title" content="Caja Quetzalitos">
-  <meta name="theme-color" content="#2E6458">
+  <meta name="theme-color" content="#06241B">
   <title>Caja Quetzalitos</title>
   <link rel="icon" type="image/png" href="../img/icono.png">
   <link rel="apple-touch-icon" href="../img/icono.png">
+  <link rel="stylesheet" href="../fonts/fonts.css">
   <link rel="stylesheet" href="../estilo.css">
 </head>
 <body>
 <main>
+  <header class="cabecera"><div class="greca"></div></header>
+
   <section id="carga">
+    <div class="logo-halo"><img src="../img/logo.png" alt="Quetzalitos" width="476" height="478"></div>
     <p id="carga-verificando" class="centro" aria-live="polite">Verificando…</p>
     <p id="carga-msg" aria-live="polite" class="oculto"></p>
-    <button id="btn-reintentar" class="btn btn-grande oculto" type="button">Reintentar</button>
+    <button id="btn-reintentar" class="btn btn-oro oculto" type="button">Reintentar</button>
   </section>
 
   <section id="login" class="oculto">
-    <p class="logo logo-chico"><img src="../img/logo-240.png" alt="Quetzalitos" width="72" height="72"></p>
-    <h1>Entrar a caja</h1>
+    <div class="logo-halo"><img src="../img/logo.png" alt="Quetzalitos" width="476" height="478"></div>
+    <h1 class="centro">Entrar a caja</h1>
     <form id="form-login">
       <label for="pin">PIN de la cafetería</label>
       <input id="pin" class="campo" type="password" inputmode="numeric" autocomplete="off">
-      <button id="btn-entrar" class="btn btn-grande" type="submit">Entrar</button>
+      <button id="btn-entrar" class="btn btn-oro" type="submit">Entrar</button>
     </form>
     <p id="login-msg" aria-live="polite" class="oculto"></p>
   </section>
@@ -35,8 +39,8 @@
       <h1 id="nombre"></h1>
       <button id="btn-salir" class="btn btn-chico btn-claro" type="button">Salir</button>
     </div>
-    <button id="btn-venta" class="btn btn-grande" type="button">Venta de postre</button>
-    <button id="btn-canje" class="btn btn-grande btn-claro" type="button">Canjear premio</button>
+    <button id="btn-venta" class="btn btn-grande btn-azul btn-con-icono icono-postre" type="button"><span class="btn-titulo">Venta de postre</span><span class="btn-sub">Muestra el QR al cliente</span></button>
+    <button id="btn-canje" class="btn btn-grande btn-oro btn-con-icono icono-estrella" type="button"><span class="btn-titulo">Canjear premio</span><span class="btn-sub">Escribe el código del cliente</span></button>
     <p id="menu-msg" aria-live="polite" class="oculto"></p>
   </section>
 
@@ -45,22 +49,25 @@
     <div id="qr" class="qr-caja"></div>
     <p class="centro">Que el cliente lo escanee con la cámara</p>
     <p id="cuenta" class="cuenta"></p>
-    <button id="btn-listo" class="btn btn-grande" type="button">Listo</button>
+    <div class="barra"><i id="barra-venta"></i></div>
+    <button id="btn-listo" class="btn btn-oro" type="button">Listo</button>
   </section>
 
   <section id="canje" class="oculto">
     <h1>Canjear premio</h1>
     <label for="codigo">Código de 6 dígitos</label>
     <input id="codigo" class="campo" type="text" inputmode="numeric" maxlength="6" autocomplete="off">
-    <button id="btn-validar" class="btn btn-grande" type="button">Validar</button>
+    <button id="btn-validar" class="btn" type="button">Validar</button>
     <p id="canje-msg" aria-live="polite" class="oculto"></p>
     <button id="btn-volver-canje" class="btn btn-claro" type="button">Volver</button>
   </section>
 
   <section id="exito" class="oculto">
-    <div class="exito" aria-live="polite">✓ Entrega un postre gratis</div>
-    <button id="btn-nuevo" class="btn btn-grande" type="button">Volver al menú</button>
+    <div class="exito" aria-live="polite">¡Entrega un postre gratis!</div>
+    <button id="btn-nuevo" class="btn" type="button">Volver al menú</button>
   </section>
+
+  <footer class="pie"><div class="greca"></div></footer>
 </main>
 
 <script src="../config.js"></script>

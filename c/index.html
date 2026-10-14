@@ -4,32 +4,40 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <meta name="theme-color" content="#2E6458">
+  <meta name="theme-color" content="#06241B">
   <title>Tu tarjeta Quetzalitos</title>
   <link rel="icon" type="image/png" href="../img/icono.png">
   <link rel="apple-touch-icon" href="../img/icono.png">
+  <link rel="stylesheet" href="../fonts/fonts.css">
   <link rel="stylesheet" href="../estilo.css">
 </head>
 <body>
 <main>
-  <h1 class="logo"><img src="../img/logo-240.png" alt="Quetzalitos" width="120" height="120"></h1>
+  <header class="cabecera"><div class="greca"></div></header>
+
+  <div class="logo-halo"><img src="../img/logo.png" alt="Quetzalitos" width="476" height="478"></div>
+  <h1 class="centro">Tu tarjeta de sellos</h1>
 
   <p id="estado" aria-live="polite" class="oculto"></p>
   <button id="btn-reintentar" class="btn btn-claro oculto" type="button">Reintentar</button>
 
-  <section id="sin-tarjeta" class="tarjeta">
-    <p>Escanea el QR de la cajera cuando compres tu postre.</p>
+  <section id="sin-tarjeta" class="marco centro">
+    <p class="rotulo">Bienvenido</p>
+    <h2>Escanea el QR de la cajera</h2>
+    <p>Cuando compres tu postre, empieza a juntar sellos.</p>
   </section>
 
-  <section id="tarjeta" class="tarjeta oculto">
+  <section id="tarjeta" class="marco oculto">
+    <p class="rotulo">Tu tarjeta</p>
     <div id="sellos" class="sellos"></div>
-    <p id="texto" aria-live="polite"></p>
+    <p id="texto" class="centro" aria-live="polite"></p>
 
-    <button id="btn-premio" class="btn btn-grande oculto" type="button">Canjear mi postre gratis</button>
+    <button id="btn-premio" class="btn btn-oro btn-premio oculto" type="button">Canjear mi postre gratis</button>
 
-    <div id="bloque-canje" class="oculto">
-      <p class="centro"><strong>Díselo a la cajera</strong></p>
+    <div id="bloque-canje" class="placa oculto">
+      <p class="centro">Díselo a la cajera</p>
       <p id="codigo-canje" class="codigo"></p>
+      <div class="barra"><i id="barra-canje"></i></div>
       <p id="cuenta-canje" class="centro"></p>
     </div>
   </section>
@@ -37,6 +45,8 @@
   <p class="letra-chica">
     Tu tarjeta vive en este teléfono. No pedimos nombre, correo ni otros datos personales.
   </p>
+
+  <footer class="pie"><div class="greca"></div></footer>
 </main>
 
 <script src="../config.js"></script>

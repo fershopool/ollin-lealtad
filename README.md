@@ -8,5 +8,6 @@ Módulo de lealtad de [OLLIN](https://ollin.digital): tarjeta de sellos con QR g
 - `sql/limpiar-pruebas.sql` borra la cafetería «prueba» con todo lo generado con ella y además vacía `fallos_pin` (quita cualquier bloqueo vigente).
 - `config.js` lleva la URL del proyecto y la llave publishable (pública). Nunca pongas aquí claves secret/service_role ni PIN.
 - `vendor/qrcode.js` es qrcode-generator 1.4.4 (MIT), incluido para no depender de un CDN.
+- Diseño «códice dorado» (neoprehispánico): `estilo.css` (jade, oro y obsidiana sobre crema), grecas y glifos en `img/*.svg` teñidos con máscaras CSS, tipografías DM Sans e Instrument Serif en `fonts/` (licencia OFL, ver `fonts/OFL.txt`).
 
 Probar localmente: `python3 -m http.server 8000` en esta carpeta y abrir `http://localhost:8000/caja/`.

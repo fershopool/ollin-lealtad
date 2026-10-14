@@ -77,9 +77,15 @@
       s.className = i < llenos ? "sello lleno" : "sello";
       cont.appendChild(s);
     }
-    $("texto").textContent = "Llevas " + llenos + " de " + meta + ". El " + (meta + 1) + ".º va por la casa";
-    saldo = r.sellos;
     premioListo = !!r.premio_listo;
+    // El postre gratis es el último «sello»: una banda que se ilumina cuando el premio está listo.
+    var p = document.createElement("span");
+    p.className = premioListo ? "sello premio listo" : "sello premio";
+    p.textContent = "El " + (meta + 1) + ".º va por la casa";
+    cont.appendChild(p);
+    var faltan = meta - llenos;
+    $("texto").textContent = premioListo ? "¡Tarjeta completa!" : "Llevas " + llenos + " de " + meta + " · te " + (faltan === 1 ? "falta 1" : "faltan " + faltan);
+    saldo = r.sellos;
     $("btn-premio").classList.toggle("oculto", !premioListo || canjeActivo);
     $("sin-tarjeta").classList.add("oculto");
     $("tarjeta").classList.remove("oculto");
@@ -125,6 +131,11 @@
         if (r.nueva) texto = "Creamos tu tarjeta. " + texto;
         aviso(texto, "aviso");
         pintar(r);
+        if (!r.repetido) {
+          // El sello recién ganado entra con animación; los demás no se repiten al repintar.
+          var llenos = $("sellos").querySelectorAll(".sello.lleno");
+          if (llenos.length) llenos[llenos.length - 1].classList.add("nuevo");
+        }
         return;
       }
       if (r.error === "red") {
@@ -170,6 +181,12 @@
     $("codigo-canje").textContent = r.codigo;
     $("bloque-canje").classList.remove("oculto");
     $("btn-premio").classList.add("oculto");
+    // La barra se vacía en el tiempo que le queda al código.
+    var barra = $("barra-canje");
+    barra.classList.remove("corre");
+    void barra.offsetWidth;
+    barra.style.animationDuration = Math.max(canjeFin - Date.now(), 0) + "ms";
+    barra.classList.add("corre");
     detenerTimersCanje();
     timerSaldo = setInterval(consultarSaldo, 5000);
     timerCuenta = setInterval(tickCanje, 1000);
@@ -189,7 +206,7 @@
     Q.rpc("tarjeta", { p_tarjeta: tarjetaId }).then(function (r) {
       if (!canjeActivo || !r.ok) return;
       pintar(r);
-      if (r.sellos < saldoAlCanje) terminarCanje("¡Listo! Disfruta tu postre", "aviso");
+      if (r.sellos < saldoAlCanje) terminarCanje("¡Listo! Disfruta tu postre", "aviso fiesta");
     });
   }
 
@@ -197,6 +214,7 @@
     canjeActivo = false;
     detenerTimersCanje();
     $("bloque-canje").classList.add("oculto");
+    $("barra-canje").classList.remove("corre");
     $("codigo-canje").textContent = "";
     $("btn-premio").classList.toggle("oculto", !premioListo);
     aviso(texto, tipo);

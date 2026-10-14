@@ -7,17 +7,20 @@
   <title>Panel · Quetzalitos</title>
   <link rel="icon" type="image/png" href="../img/icono.png">
   <link rel="apple-touch-icon" href="../img/icono.png">
+  <link rel="stylesheet" href="../fonts/fonts.css">
   <link rel="stylesheet" href="../estilo.css">
   <link rel="stylesheet" href="panel.css">
 </head>
 <body>
   <main>
+    <header class="cabecera"><div class="greca"></div></header>
+    <div class="logo-halo logo-mediano"><img src="../img/logo.png" alt="Quetzalitos" width="476" height="478"></div>
     <h1>Panel de Quetzalitos</h1>
 
     <form id="form-clave">
       <label for="clave">Clave admin</label>
       <input id="clave" class="campo" type="password" autocomplete="off" required>
-      <button id="ver" class="btn btn-grande" type="submit">Ver métricas</button>
+      <button id="ver" class="btn btn-oro" type="submit">Ver métricas</button>
     </form>
 
     <label for="periodo">Periodo</label>
@@ -43,6 +46,7 @@
     </div>
 
     <p class="aviso">Ventas = QR generados por la cajera. No se ven las ventas donde la cajera no tocó el botón. Reclamos = QR escaneados por clientes.</p>
+    <footer class="pie"><div class="greca"></div></footer>
   </main>
 
   <script src="../config.js"></script>

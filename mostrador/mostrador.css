@@ -1,36 +1,57 @@
-:root { --crema: #FFF8E5; --cafe: #34241C; --verde: #2E6458; --naranja: #EA9C1E; }
+/* Hoja imprimible «selva neón»: verdes profundos, rosa mexicano, naranja cempasúchil, azul mexicano y grecas escalonadas. */
+:root {
+  --noche: #04170F; --selva: #0A2E22; --jade: #137A5B; --esmeralda: #1FB67A; --menta: #8DF0C0; --lima: #C6FF7A;
+  --rosa: #E4007C; --rosa-osc: #B80066; --rosa-claro: #FFB3DB; --naranja: #FF8A1F; --azul: #1F5BD6; --azul-osc: #14409E; --azul-neon: #4C8DFF; --papel: #FFFFFF; --tinta: #0A2E22; --verde-greca: #7BD93F;
+  --serif: 'Instrument Serif', 'Iowan Old Style', Palatino, Georgia, serif; --sans: 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
 @page { size: A4; margin: 12mm; }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--crema); color: var(--cafe); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.35; }
+html { background: var(--noche); }
+body { margin: 0; min-height: 100vh; background: linear-gradient(180deg, var(--selva), var(--noche)); color: var(--tinta); font-family: var(--sans); line-height: 1.35; }
 .barra { max-width: 210mm; margin: 16px auto; padding: 0 16px; }
-.btn-imprimir { display: block; width: 100%; min-height: 64px; border: 0; border-radius: 14px; background: var(--verde); color: #FFFFFF; font: inherit; font-size: 1.2rem; font-weight: 700; cursor: pointer; }
-.btn-imprimir:focus-visible { outline: 4px solid var(--naranja); outline-offset: 2px; }
-.hoja { display: flex; flex-direction: column; justify-content: center; width: 210mm; max-width: calc(100% - 32px); min-height: 297mm; margin: 0 auto 16px; padding: 16mm; background: var(--crema); box-shadow: 0 2px 10px rgba(52, 36, 28, .25); text-align: center; break-after: page; }
+.btn-imprimir { display: block; width: 100%; min-height: 64px; border: 0; border-radius: 18px; background: linear-gradient(135deg, var(--rosa), var(--rosa-osc)); color: #FFFFFF; font: inherit; font-size: 1.2rem; font-weight: 700; cursor: pointer; }
+@media screen {
+  .btn-imprimir:focus-visible { outline: 3px solid var(--lima); outline-offset: 3px; }
+}
+.hoja { display: flex; flex-direction: column; justify-content: center; width: 210mm; max-width: calc(100% - 32px); min-height: 297mm; margin: 0 auto 16px; padding: 16mm; background: var(--papel); box-shadow: 0 12px 32px rgba(0, 0, 0, .45); text-align: center; break-after: page; }
 .hoja:last-of-type { break-after: auto; }
-.letrero h1 { font-size: 4.2rem; line-height: 1.1; margin: 0 0 .5em; }
-.letrero .grande { font-size: 3.2rem; font-weight: 700; margin: .3em 0; }
+/* Bandas de greca: la superior y la inferior (volteada) enmarcan cada hoja */
+.banda { flex: none; height: 16px; background: linear-gradient(90deg, var(--rosa) 0%, var(--naranja) 25%, var(--verde-greca) 50%, var(--esmeralda) 72%, var(--azul-neon) 100%); -webkit-mask: url(../img/greca.svg) repeat-x center bottom / auto 100%; mask: url(../img/greca.svg) repeat-x center bottom / auto 100%; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+/* Banda secundaria: misma greca, más delgada */
+.banda-oro { flex: none; height: 10px; background: linear-gradient(90deg, var(--rosa) 0%, var(--naranja) 25%, var(--verde-greca) 50%, var(--esmeralda) 72%, var(--azul-neon) 100%); -webkit-mask: url(../img/greca.svg) repeat-x center bottom / auto 100%; mask: url(../img/greca.svg) repeat-x center bottom / auto 100%; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.hoja > .banda:first-child { margin-bottom: auto; }
+.hoja > .banda:last-child { margin-top: auto; transform: scaleY(-1); }
+.letrero h1, .caja h1 { font-family: var(--serif); font-weight: 400; line-height: 1.05; color: var(--tinta); overflow-wrap: anywhere; }
+.letrero h1 { font-size: 4.4rem; margin: 0 0 .4em; }
+.letrero .grande { font-family: var(--sans); font-size: 3.2rem; font-weight: 700; color: var(--tinta); margin: .3em 0; }
+.letrero .grande + .grande { color: var(--rosa-osc); }
 .letrero .chico { font-size: 1.6rem; margin-top: 1.2em; }
 .caja { justify-content: flex-start; }
 .caja h1 { font-size: 2.6rem; margin: 0 0 .5em; }
-.caja ol { text-align: left; font-size: 1.25rem; padding-left: 1.4em; margin: 0; }
-.caja li { margin-bottom: .8em; }
-.qr-caja { width: 70mm; margin: 8px auto; }
+.caja ol { list-style: none; counter-reset: paso; text-align: left; font-size: 1.25rem; padding: 0; margin: 0; }
+.caja li { counter-increment: paso; position: relative; padding-left: 2.8em; margin-bottom: .8em; }
+.caja li::before { content: counter(paso); position: absolute; left: 0; top: .05em; width: 2em; height: 2em; border-radius: 50%; background: linear-gradient(135deg, var(--azul), var(--azul-osc)); color: #FFFFFF; font-weight: 700; font-size: .95em; line-height: 2em; text-align: center; }
+.caja li:nth-child(3n+2)::before { background: linear-gradient(135deg, var(--naranja), #FFB04D); color: var(--tinta); }
+.caja li:nth-child(3n)::before { background: linear-gradient(135deg, var(--rosa), var(--rosa-osc)); }
+/* Marco del QR con borde degradado */
+.qr-caja { width: 70mm; max-width: 100%; margin: 8px auto; padding: 8px; background: linear-gradient(#FFFFFF, #FFFFFF) padding-box, linear-gradient(135deg, var(--rosa), var(--naranja) 35%, var(--esmeralda) 68%, var(--azul-neon)) border-box; border: 4px solid transparent; border-radius: 18px; }
 .qr-caja svg { display: block; width: 100%; height: auto; }
 .url { font-size: 1rem; text-align: center; word-break: break-all; margin: 0 0 4px; }
 .etiqueta { font-size: 1rem; margin: 0 0 1em; opacity: .7; }
-.logo-letrero { display: block; width: 62mm; height: auto; margin: 0 auto 6mm; }
+.logo-letrero { display: block; width: 62mm; max-width: 100%; height: auto; margin: 0 auto 6mm; }
 .logo-hoja2 { display: block; width: 26mm; height: auto; margin: 0 auto 4mm; }
 @media (max-width: 700px) {
   .hoja { padding: 8mm; min-height: 0; }
-  .letrero h1 { font-size: 2.2rem; }
+  .letrero h1 { font-size: 2.6rem; }
   .letrero .grande { font-size: 1.7rem; }
   .letrero .chico { font-size: 1.1rem; }
-  .caja h1 { font-size: 1.8rem; }
+  .caja h1 { font-size: 1.9rem; }
   .caja ol { font-size: 1rem; }
+  .caja li { padding-left: 2.6em; }
 }
 @media print {
-  body { background: #FFFFFF; }
-  .hoja { background: var(--crema); color: #000000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .hoja { width: auto; max-width: none; min-height: 0; height: 273mm; margin: 0; padding: 0; box-shadow: none; }
+  html, body { background: #FFFFFF; }
+  .hoja { background: #FFFFFF; color: #000000; -webkit-print-color-adjust: exact; print-color-adjust: exact; width: auto; max-width: none; min-height: 0; height: 273mm; margin: 0; padding: 0 8mm; box-shadow: none; }
+  .letrero .grande, .letrero h1, .caja h1 { color: #000000; }
   .barra, .solo-pantalla { display: none; }
 }
