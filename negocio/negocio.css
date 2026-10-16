@@ -225,6 +225,18 @@ select.campo-c option { background: var(--selva); color: var(--hielo); }
   width: 44px; height: 44px; padding: 0; border: 1px solid var(--borde); border-radius: 14px;
   background: var(--superficie); font-size: 1.25rem; line-height: 1; cursor: pointer;
 }
+.ayuda + .sugerencias { margin: 10px 0 14px; }
+
+/* Ejemplo de tarjeta en la vista previa: 2 fichas llenas y 3 vacías (34 px) */
+.sello-ej { display: flex; justify-content: center; gap: 8px; margin: 14px 0 0; }
+.ficha {
+  flex: 0 0 34px; width: 34px; height: 34px; border-radius: 50%; display: inline-grid; place-items: center;
+  box-sizing: border-box;
+}
+.ficha.lleno { background: var(--hielo); box-shadow: 0 0 0 2px var(--naranja); }
+.ficha.vacio { background: rgba(0, 0, 0, .25); border: 2px solid var(--borde); }
+.ficha.vacio .ej-emoji { opacity: .25; filter: grayscale(1); }
+.ej-emoji { font-size: 1.05rem; line-height: 1; }
 
 .fondo-fila { display: flex; align-items: center; gap: 16px; margin: 0 0 16px; }
 .fondo-miniatura {

@@ -9,6 +9,7 @@
   var MAX_PROGRAMAS = 10;
   var RE_PROGRAMA = /^[A-Za-z0-9_-]{1,64}$/;
   var RE_COLOR = /^#[0-9a-fA-F]{6}$/;
+  var COLORES_FIESTA = ["#E4007C", "#C6FF7A", "#1FB67A", "#4DB5FF"];
   var $ = function (id) { return document.getElementById(id); };
 
   var tarjetaId = "";
@@ -22,6 +23,9 @@
   var saldoAlCanje = 0; // saldo al pedir el código: si baja, el canje se usó
   var timerSaldo = null;
   var timerCuenta = null;
+  var timerAviso = null;
+  var timerSalir = null;
+  var reiniciando = false; // corre la animación de reinicio tras un canje
   var reclamando = false; // hay un reclamo en curso: se ignora otro
   var generada = false;   // el id de tarjeta se creó en el reclamo en curso
 
@@ -88,10 +92,19 @@
     } catch (e) { /* sin almacenamiento: el programa vale solo en esta vista */ }
   }
 
+  // Aviso flotante: se desvanece solo (4 s; los errores, 6 s).
   function aviso(texto, tipo) {
     var el = $("estado");
+    clearTimeout(timerAviso);
+    clearTimeout(timerSalir);
+    el.classList.remove("salir");
     el.className = texto ? tipo : "oculto";
     el.textContent = texto || "";
+    if (!texto) return;
+    timerAviso = setTimeout(function () {
+      el.classList.add("salir");
+      timerSalir = setTimeout(function () { el.className = "oculto"; }, 320);
+    }, /error/.test(tipo) ? 6000 : 4000);
   }
 
   function mmss(segundos) {
@@ -105,20 +118,26 @@
     $("tarjeta").classList.add("oculto");
   }
 
-  // Color y logo del programa; sin valores válidos, los de la página.
-  function aplicarColor(color) {
-    var ok = typeof color === "string" && RE_COLOR.test(color);
+  // Color y logo del programa; sin valores válidos, los de la página. Con tema que trae acento, manda el tema.
+  function aplicarColor(color, tema) {
+    var ok = typeof color === "string" && RE_COLOR.test(color) && !(tema && RE_COLOR.test(tema.acento));
     $("tarjeta").style.background = ok ? "linear-gradient(135deg, " + color + " 0%, var(--naranja) 26%, var(--esmeralda) 62%, var(--azul-neon) 100%)" : "";
     $("btn-premio").style.background = ok ? "linear-gradient(135deg, " + color + " 0%, var(--naranja-osc) 100%)" : "";
-    // Aro del medallón con el color del programa (c.css usa --acento); vacío = colores de la página.
+    // Aro del medallón con el color del programa (c.css usa --acento); vacío = colores de la página o del tema.
     $("logo").parentNode.style.setProperty("--acento", ok ? color : "");
   }
+  // Foto del negocio en círculo lleno; Quetzalitos conserva su logo completo. Si falla, el de Quetzalitos.
   function aplicarLogo(ruta, nombre) {
     var img = $("logo");
     img.alt = nombre;
     img.onerror = null;
+    img.classList.toggle("de-negocio", programa !== "q");
     img.src = Q.logo(ruta);
-    img.onerror = function () { this.onerror = null; this.src = Q.logo(null); };
+    img.onerror = function () {
+      this.onerror = null;
+      this.classList.remove("de-negocio");
+      this.src = Q.logo(null);
+    };
   }
 
   function abreviar(clave) {
@@ -144,45 +163,84 @@
     }
   }
 
-  // Dibuja sellos, texto y botón de premio con el estado devuelto por el servidor.
+  // Franja de abajo: el botón de canje ocupa el lugar del contador (mismo alto, sin sumar altura).
+  function actualizarFranja() {
+    var mostrarBoton = premioListo && !canjeActivo;
+    $("btn-premio").classList.toggle("oculto", !mostrarBoton);
+    $("texto").classList.toggle("oculto", mostrarBoton);
+  }
+
+  // Sellos: columnas y tamaño que hacen caber todas las fichas en la zona (meta hasta 50).
+  function ajustarSellos() {
+    var zona = $("zona-sellos");
+    var cont = $("sellos");
+    var n = cont.children.length;
+    var W = zona.clientWidth;
+    var H = zona.clientHeight;
+    if (!n || !W || !H) return;
+    // Filas de 5 como máximo y lo más parejas posible (16 → 4×4, 11 → 4+4+3, 7 → 4+3); hasta 6 sellos, 3 por fila.
+    var cols = n <= 3 ? n : (n === 4 ? 2 : (n <= 6 ? 3 : Math.ceil(n / Math.ceil(n / 5))));
+    var filas = Math.ceil(n / cols);
+    var hueco = Math.max(6, Math.min(12, Math.floor(Math.min(W, H) / 22)));
+    var tam = Math.floor(Math.min((W - hueco * (cols - 1)) / cols, (H - hueco * (filas - 1)) / filas, 92));
+    if (tam < 16) tam = 16;
+    cont.style.setProperty("--cols", cols);
+    cont.style.setProperty("--sello", tam + "px");
+    cont.style.setProperty("--hueco", hueco + "px");
+  }
+
+  // Dibuja sellos, banda, texto y botón de premio con el estado devuelto por el servidor.
   function pintar(r) {
     config = r.config || {};
+    var negocio = programa !== "q";
+    // Tema del negocio; en Quetzalitos, null = diseño neón de siempre.
+    var tema = negocio ? config.tema || null : null;
+    Q.tema(tema);
+    var emoji = programa === "q" ? null : (config.sello || null);
     var meta = Math.min(50, Math.max(1, r.meta || 1));
     var llenos = Math.min(r.sellos, meta);
     var cont = $("sellos");
     cont.textContent = "";
-    // Más de 6 sellos: filas de máximo 5 (ver .sellos.cinco en estilo.css).
-    cont.classList.toggle("cinco", meta > 6);
     for (var i = 0; i < meta; i++) {
       var s = document.createElement("span");
-      s.className = i < llenos ? "sello lleno" : "sello";
+      s.className = (i < llenos ? "sello lleno" : "sello") + (emoji ? " con-emoji" : "");
+      s.style.setProperty("--i", i);
+      if (emoji) {
+        var ico = document.createElement("span");
+        ico.className = "ico";
+        ico.textContent = emoji;
+        s.appendChild(ico);
+      }
       cont.appendChild(s);
     }
     premioListo = !!r.premio_listo;
-    // El premio es el último «sello»: una banda que se ilumina cuando el premio está listo.
-    var p = document.createElement("span");
-    p.className = premioListo ? "sello premio listo" : "sello premio";
-    p.textContent = config.premio || "Tu premio";
-    cont.appendChild(p);
+    // El premio es una banda fija: se ilumina cuando el premio está listo.
+    var banda = $("banda");
+    banda.classList.toggle("listo", premioListo);
+    banda.classList.toggle("con-emoji", negocio);
+    $("banda-ico").textContent = negocio ? (config.sello || "🎁") : "";
+    $("banda-ico").classList.toggle("oculto", !negocio);
+    $("banda-txt").textContent = config.premio || "Tu premio";
     var faltan = meta - llenos;
     var unidad = config.unidad || "sellos";
     $("texto").textContent = premioListo ? "¡Tarjeta completa!" : "Llevas " + llenos + " de " + meta + " " + unidad + " · te " + (faltan === 1 ? "falta 1" : "faltan " + faltan);
     $("mensaje").textContent = config.mensaje || "";
     $("mensaje").classList.toggle("oculto", !config.mensaje);
     $("btn-premio").textContent = "Canjear: " + (config.premio || "tu premio");
-    $("btn-premio").classList.toggle("oculto", !premioListo || canjeActivo);
+    actualizarFranja();
 
     var nombre = config.nombre || "Tu tarjeta de sellos";
     $("titulo").textContent = nombre;
     document.title = nombre;
     if (config.nombre) nombres[programa] = config.nombre;
-    aplicarColor(config.color);
+    aplicarColor(config.color, tema);
     aplicarLogo(config.logo, nombre);
 
     saldo = r.sellos;
     $("sin-tarjeta").classList.add("oculto");
     $("tarjeta").classList.remove("oculto");
     pintarFichas();
+    ajustarSellos();
   }
 
   function mostrarReintentar(visible) {
@@ -232,6 +290,21 @@
     cargarTarjeta(tarjetaId);
   }
 
+  // Colores y emoji de la celebración: los del tema del negocio; en Quetzalitos, los neón.
+  function celebrar() {
+    if (!window.Fiesta) return;
+    var tema = programa === "q" ? null : config.tema;
+    var colores = [];
+    [tema && tema.acento, tema && tema.acento2, config.color].forEach(function (c) {
+      if (typeof c === "string" && RE_COLOR.test(c)) colores.push(c);
+    });
+    Fiesta.premioListo({
+      zona: $("tarjeta"),
+      emoji: programa === "q" ? null : (config.sello || null),
+      colores: colores.length ? colores : COLORES_FIESTA
+    });
+  }
+
   // Al escanear: reclamar el sello. El hash se quita solo cuando el servidor respondió (no con error de red),
   // para que recargar o Reintentar repitan el mismo reclamo.
   function reclamarSello(codigo) {
@@ -250,6 +323,8 @@
         tarjetaId = r.tarjeta_id;
         guardar(tarjetaId);
         if (canjeActivo && r.programa !== programa) terminarCanje("", "");
+        // Premio recién listo: solo si antes no lo estaba en este mismo programa.
+        var estabaLista = premioListo && r.programa === programa;
         recordarPrograma(r.programa);
         var texto = r.repetido ? "Este sello ya estaba agregado" : "¡Sello agregado en " + r.cafeteria + "!";
         if (r.nueva) texto = "Creamos tu tarjeta. " + texto;
@@ -261,6 +336,7 @@
           var llenos = $("sellos").querySelectorAll(".sello.lleno");
           if (llenos.length) llenos[llenos.length - 1].classList.add("nuevo");
         }
+        if (r.premio_listo && !estabaLista) celebrar();
         return;
       }
       if (r.error === "red") {
@@ -306,8 +382,10 @@
     saldoAlCanje = saldo;
     canjeFin = new Date(r.expira_en).getTime();
     $("codigo-canje").textContent = r.codigo;
+    // La placa reemplaza a los sellos dentro de la misma zona: la altura no cambia.
+    $("sellos").classList.add("oculto");
     $("bloque-canje").classList.remove("oculto");
-    $("btn-premio").classList.add("oculto");
+    actualizarFranja();
     // La barra se vacía en el tiempo que le queda al código.
     var barra = $("barra-canje");
     barra.classList.remove("corre");
@@ -332,9 +410,39 @@
   function consultarSaldo() {
     var p = programa;
     Q.rpc("tarjeta", { p_tarjeta: tarjetaId, p_programa: p }).then(function (r) {
-      if (!canjeActivo || !r.ok || p !== programa) return;
+      if (!canjeActivo || reiniciando || !r.ok || p !== programa) return;
+      if (r.sellos < saldoAlCanje) return usarCanje(r);
       pintar(r);
-      if (r.sellos < saldoAlCanje) terminarCanje("¡Listo! Disfruta tu premio", "aviso fiesta");
+    });
+  }
+
+  // Tarjeta reiniciada: animación de recarga y, al terminar, el aviso «¡Listo!».
+  function usarCanje(r) {
+    reiniciando = true;
+    detenerTimersCanje();
+    var main = document.querySelector("main");
+    var repintada = false;
+    var repintar = function () {
+      if (repintada) return;
+      repintada = true;
+      pintar(r);
+      var fichas = $("sellos").children;
+      for (var i = 0; i < fichas.length; i++) fichas[i].classList.add("reinicio");
+    };
+    var fin = function () {
+      repintar();
+      main.style.pointerEvents = "";
+      reiniciando = false;
+      terminarCanje("¡Listo! Disfruta tu premio", "aviso fiesta");
+    };
+    if (!window.Fiesta) return fin();
+    main.style.pointerEvents = "none";
+    Fiesta.recargar({
+      zona: document.body,
+      quetzalcoatl: programa === "q",
+      emoji: programa === "q" ? null : (config.sello || null),
+      enMedio: repintar,
+      alTerminar: fin
     });
   }
 
@@ -342,9 +450,10 @@
     canjeActivo = false;
     detenerTimersCanje();
     $("bloque-canje").classList.add("oculto");
+    $("sellos").classList.remove("oculto");
     $("barra-canje").classList.remove("corre");
     $("codigo-canje").textContent = "";
-    $("btn-premio").classList.toggle("oculto", !premioListo);
+    actualizarFranja();
     aviso(texto, tipo);
   }
 
@@ -382,6 +491,12 @@
     aviso("", "");
     iniciar();
   });
+
+  // Los sellos se reajustan con cada cambio de tamaño, de orientación y al cargar las fuentes.
+  window.addEventListener("resize", ajustarSellos);
+  window.addEventListener("orientationchange", ajustarSellos);
+  if (window.ResizeObserver) new ResizeObserver(ajustarSellos).observe($("zona-sellos"));
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(ajustarSellos);
 
   iniciar();
 })();

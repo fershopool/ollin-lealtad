@@ -1,71 +1,182 @@
-/* Tarjeta del cliente (c/): ajustes de esta página sobre estilo.css. */
+/* Tarjeta del cliente (c/): todo cabe en una pantalla, sin scroll, en teléfonos de 320×568 a 430×932 y en horizontal. */
 
-main { padding: 12px 16px 24px; }
-.cabecera { margin-top: -12px; }
+html, body { height: 100%; overflow: hidden; }
+
+main {
+  box-sizing: border-box;
+  height: 100vh; height: 100dvh;
+  min-height: 0; max-width: 480px; overflow: hidden;
+  padding: calc(env(safe-area-inset-top, 0px) + 10px) max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 6px) max(16px, env(safe-area-inset-left, 0px));
+}
+main > * { flex: none; }
 h1 { text-wrap: balance; }
-main > .letra-chica { margin: 10px 0 0; }
 
-/* Medallón del logo: aro degradado; con programa, --acento toma el color de su negocio (lo fija c.js). */
-.logo-halo { margin: 8px auto 6px; }
+/* Cabecera: franja de greca pegada al borde superior */
+.cabecera { margin: calc(-10px - env(safe-area-inset-top, 0px)) calc(50% - 50vw) 0; }
+
+/* Cabeza: medallón, nombre, divisor y fichas de programa */
+.cabeza { display: flex; flex-direction: column; align-items: center; min-width: 0; }
+.logo-halo {
+  position: relative; display: grid; place-items: center; flex: none;
+  width: min(18dvh, 112px); height: min(18dvh, 112px); margin: 8px auto 0;
+}
+/* Aro degradado; con programa, --acento toma el color de su negocio (lo fija c.js). */
 .logo-halo::before {
+  inset: 12px; border-width: 4px;
   background:
     radial-gradient(circle at 50% 36%, #FFFFFF 0%, #F1FFF8 52%, #CDF7E3 100%) padding-box,
     conic-gradient(from 210deg, var(--acento, var(--rosa-neon)), var(--naranja), var(--lima), var(--azul-neon), var(--acento, var(--rosa-neon))) border-box;
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, .10), 0 12px 24px -10px rgba(0, 0, 0, .65), 0 0 26px 2px rgba(228, 0, 124, .28);
 }
+.logo-halo::after { inset: 0; }
+/* Quetzalitos: logo completo dentro del medallón. */
+.logo-halo img { width: 60%; height: auto; object-fit: contain; }
+/* Negocio: la foto llena el círculo interior, dentro del aro (12 px de inset + 4 px de borde + 1 px de aire). */
+.logo-halo img.de-negocio {
+  width: calc(100% - 34px); height: calc(100% - 34px);
+  border-radius: 50%; object-fit: cover; clip-path: circle(50%);
+}
+h1 {
+  flex: none; max-width: 100%; margin: 4px 0 0; font-size: clamp(1.25rem, min(4.6dvh, 7vw), 1.9rem); line-height: 1.08;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.divisor { margin: 4px 0 6px; }
 
-/* Divisor con rombo entre la cabecera y la tarjeta */
-.divisor { margin: 12px 0 14px; }
-
-/* Marco de la tarjeta: relleno generoso, huecos entre fichas de 12–14 px */
-#tarjeta, #sin-tarjeta { padding: 24px 20px; margin-bottom: 20px; }
-#texto { margin: 10px 0 0; font-size: 1.08rem; font-weight: 600; font-variant-numeric: tabular-nums; }
-#mensaje { margin: 6px 0 0; }
-.sellos { gap: 14px; margin: 4px 0 18px; }
-.sellos.cinco { gap: 12px; }
-.sellos.cinco .sello { flex: 0 0 calc((100% - 48px) / 5); width: calc((100% - 48px) / 5); }
-
-/* Programas: fila horizontal deslizable con fichas tocables (≥ 44 px). */
+/* Fichas de programa: fila horizontal deslizable, tocables (≥ 44 px). */
 #programas {
-  display: flex; flex-wrap: nowrap; gap: 8px; margin: 0 0 12px; padding: 2px 2px 6px;
+  display: flex; flex-wrap: nowrap; gap: 8px; width: 100%; box-sizing: border-box; margin: 2px 0 0; padding: 2px 2px 4px;
   overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; scrollbar-width: none;
 }
 #programas::-webkit-scrollbar { display: none; }
-#programas > .btn { flex: 0 0 auto; margin: 0; min-width: 120px; min-height: 46px; font-size: .95rem; white-space: nowrap; }
+#programas > .btn { flex: 0 0 auto; margin: 0; min-width: 120px; min-height: 44px; padding: 0 16px; font-size: .92rem; white-space: nowrap; }
 #programas > .btn[aria-pressed="true"] { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), 0 0 0 2px var(--lima), 0 10px 22px -8px rgba(228, 0, 124, .85); }
 
-/* Avisos compactos (no empujan la tarjeta más de lo necesario) y con entrada suave. */
-#estado:not(.oculto):not(.fiesta) { margin: 6px 0 8px; padding: 9px 12px 9px 18px; font-size: .92rem; line-height: 1.3; }
-#estado:not(.oculto) { animation: entra .3s ease both; }
-@keyframes entra { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+/* Cuerpo: ocupa el resto de la pantalla; la tarjeta llena su alto. */
+.cuerpo { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+#btn-reintentar { flex: none; align-self: center; min-height: 44px; margin: 0 0 8px; }
 
-/* Canje: el tiempo restante se lee de un vistazo. */
-#cuenta-canje { margin: 6px 0 0; font-size: 1.15rem; font-weight: 700; color: var(--lima); font-variant-numeric: tabular-nums; }
+/* Marco de la tarjeta (y de bienvenida): el alto lo da el cuerpo, nada más. */
+#sin-tarjeta, #tarjeta {
+  flex: 1 1 0; min-height: 0; display: flex; flex-direction: column;
+  margin: 0 0 8px; padding: 14px 14px 12px; box-sizing: border-box;
+}
+#sin-tarjeta { justify-content: center; }
+#sin-tarjeta h2 { font-size: 1.35rem; margin: 0 0 8px; }
+#sin-tarjeta p:not(.rotulo) { margin: 0; font-size: .95rem; }
+#tarjeta > .rotulo { flex: none; margin: 0 0 8px; font-size: .7rem; }
 
-/* Pie: firma discreta encima de la greca. */
-.pie { margin-bottom: -24px; }
-.pie .firma { margin: 0 0 12px; }
-.firma { text-align: center; font-size: .74rem; line-height: 1.5; letter-spacing: .04em; color: var(--niebla); }
-.firma .ollin { font-weight: 700; letter-spacing: .3em; color: var(--menta); }
+/* Zona de sellos: flex 1, sin altura de contenido. Los sellos se ajustan por JS (--sello, --cols, --hueco). */
+.zona-sellos { position: relative; flex: 1 1 0; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.sellos {
+  flex: none; display: grid; margin: 0;
+  grid-template-columns: repeat(var(--cols, 3), var(--sello, 64px));
+  gap: var(--hueco, 10px); justify-content: center; align-content: center;
+}
+.sellos .sello { width: var(--sello, 64px); height: var(--sello, 64px); max-width: none; aspect-ratio: auto; }
 
-@media (prefers-reduced-motion: reduce) {
-  #estado:not(.oculto) { animation: none; }
+/* Canje: la placa reemplaza a los sellos dentro de la misma zona (no cambia la altura). */
+.zona-sellos > .placa {
+  flex: 0 1 auto; width: 100%; box-sizing: border-box; max-height: 100%; margin: 0; padding: 10px 12px;
+  display: flex; flex-direction: column; justify-content: center;
+}
+.placa .centro { font-size: .85rem; }
+.placa .barra { height: 8px; margin: 8px 6px; }
+.codigo { margin: 2px 0; font-size: clamp(1.6rem, min(9dvh, 13vw), 3rem); line-height: 1.1; }
+#cuenta-canje { margin: 0; font-size: 1.1rem; }
+
+/* Fichas de sellos */
+.sello.con-emoji::before, .sello.con-emoji.lleno::before { display: none; }
+.sello .ico {
+  position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; pointer-events: none;
+  font-size: calc(var(--sello, 64px) * .52); line-height: 1;
+}
+.sello:not(.lleno) .ico { opacity: .22; filter: grayscale(1); }
+/* Al reiniciar tras un canje: cada ficha vacía pulsa en secuencia. */
+.sello.reinicio:not(.lleno) { animation: pulso-vacia .5s ease both; animation-delay: calc(var(--i, 0) * 40ms); }
+@keyframes pulso-vacia {
+  0%, 100% { box-shadow: inset 0 0 0 2px var(--ficha-tenue), inset 0 8px 16px rgba(0, 0, 0, .45); }
+  50% { box-shadow: inset 0 0 0 2px var(--ficha), 0 0 22px 4px var(--ficha-glow), inset 0 8px 16px rgba(0, 0, 0, .45); }
 }
 
-/* Una sola pantalla en teléfonos bajos (p. ej. 375×667): logo, nombre, sellos y premio. */
-@media (max-height: 760px) {
-  main { padding-top: 10px; }
-  .cabecera { margin-top: -10px; }
-  .logo-halo { width: 176px; height: 176px; margin: 0 auto 0; }
-  .logo-halo img { width: 134px; }
-  h1 { font-size: 1.9rem; margin: 4px 0 6px; }
-  .divisor { margin: 6px 0 10px; }
-  #tarjeta, #sin-tarjeta { margin-bottom: 14px; padding: 18px 16px; }
-  .rotulo { margin-bottom: 10px; }
-  .sellos { margin: 2px 0 12px; }
-  .sellos:not(.cinco) { gap: 12px; }
-  .sellos:not(.cinco) .sello { max-width: 76px; }
-  .sellos:not(.cinco) .sello.premio { max-width: none; }
-  .sello.premio { min-height: 58px; font-size: 1.25rem; }
-  .btn-premio { min-height: 68px; margin-bottom: 0; font-size: 1.5rem; }
+/* Banda del premio: fija, una línea de texto y un medallón. */
+#banda {
+  position: relative; flex: none; width: 100%; box-sizing: border-box; min-height: 52px; margin: 8px 0 0;
+  padding: 6px 14px 6px 68px; max-width: none; aspect-ratio: auto;
+  font-size: 1.15rem; line-height: 1.1;
+}
+#banda::before { inset: auto; left: 12px; top: 50%; width: 42px; height: 42px; margin-top: -21px; }
+#banda.con-emoji::before { display: none; }
+#banda-txt { min-width: 0; }
+.ico-premio {
+  position: absolute; left: 12px; top: 50%; width: 42px; height: 42px; margin-top: -21px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 22px; line-height: 1;
+  background: radial-gradient(circle at 50% 30%, #FFFFFF 0%, #EAFFF5 58%, #BDF3D8 100%);
+  box-shadow: 0 0 0 3px var(--naranja), 0 0 14px 2px rgba(255, 138, 31, .45);
+}
+
+/* Franja: contador o botón de canje, en el mismo lugar y con la misma altura. */
+.franja { flex: none; display: flex; align-items: center; justify-content: center; min-height: 48px; margin: 6px 0 0; }
+#texto { margin: 0; font-size: 1rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+#btn-premio { width: 100%; min-height: 52px; margin: 0; padding: 8px 16px; font-size: 1.3rem; animation-duration: 1.6s; }
+#btn-premio::before { width: 22px; height: 22px; }
+#mensaje {
+  flex: none; margin: 6px 0 0; font-size: .8rem; line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+/* Avisos: flotan bajo la cabecera y se desvanecen; no empujan el diseño. */
+#estado:not(.oculto) {
+  position: fixed; z-index: 30; top: calc(env(safe-area-inset-top, 0px) + 22px);
+  left: 16px; right: 16px; max-width: 448px; margin: 0 auto; box-sizing: border-box;
+}
+#estado:not(.oculto):not(.fiesta) {
+  padding: 9px 12px 9px 18px; font-size: .92rem; line-height: 1.3;
+  animation: entra .3s ease both;
+}
+#estado.salir { animation: desvanece .3s ease forwards; }
+@keyframes entra { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@keyframes desvanece { to { opacity: 0; } }
+
+/* Canje: el tiempo restante se lee de un vistazo. */
+#cuenta-canje { color: var(--lima); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* Pie: una línea de firma y la greca; la frase de privacidad solo en pantallas altas. */
+.pie { flex: none; margin: 6px calc(50% - 50vw) 0; padding: 0; }
+.pie .privacidad { margin: 0 0 2px; font-size: 11px; line-height: 1.3; }
+.pie .firma { margin: 0 0 4px; font-size: 11px; line-height: 1.3; letter-spacing: .04em; color: var(--niebla); text-align: center; }
+.pie .firma .ollin { font-weight: 700; letter-spacing: .3em; color: var(--menta); }
+.pie .greca { height: 12px; transform: scaleY(-1); }
+
+/* Foco visible en todo lo tocable */
+button:focus-visible, a:focus-visible { outline: 3px solid var(--lima); outline-offset: 3px; }
+
+/* Alto bajo: sin frase de privacidad */
+@media (max-height: 600px) {
+  .pie .privacidad { display: none; }
+}
+
+/* Horizontal: cabeza a la izquierda, tarjeta a toda la altura a la derecha. */
+@media (orientation: landscape) and (max-height: 520px) {
+  main {
+    display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); grid-template-rows: auto minmax(0, 1fr) auto;
+    column-gap: 18px; max-width: none;
+    padding: calc(env(safe-area-inset-top, 0px) + 10px) max(16px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 4px) max(16px, env(safe-area-inset-left, 0px));
+  }
+  .cabecera { grid-column: 1 / -1; grid-row: 1; margin: calc(-10px - env(safe-area-inset-top, 0px)) -16px 0; }
+  #estado:not(.oculto) { left: auto; right: 16px; width: 60%; }
+  .cabeza { grid-column: 1; grid-row: 2; justify-content: center; min-height: 0; }
+  .cuerpo { grid-column: 2; grid-row: 2; min-height: 0; }
+  .pie { grid-column: 1 / -1; grid-row: 3; margin: 4px -16px 0; }
+  .logo-halo { width: min(34dvh, 130px); height: min(34dvh, 130px); margin: 0 auto; }
+  h1 { font-size: clamp(1.05rem, 6.5dvh, 1.6rem); text-align: center; }
+  .divisor { margin: 4px 0; }
+  #programas { justify-content: center; }
+  #programas > .btn { min-width: 0; }
+  #btn-reintentar { align-self: center; }
+}
+
+/* Quien prefiere menos movimiento no ve animaciones de la tarjeta. */
+@media (prefers-reduced-motion: reduce) {
+  #estado:not(.oculto), #estado.salir, .sello.reinicio, .sello.nuevo,
+  #banda.listo, #banda.listo::before, #btn-premio, #btn-premio::before { animation: none !important; }
+  .btn { transition: none; }
 }

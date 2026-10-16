@@ -503,7 +503,9 @@
     ["Neón", "#FF2E93", "#00E5FF", "#0B0B1A"]
   ];
   var SUGERENCIAS = ["🍺", "☕", "🍕", "🍰", "🌮", "🍔", "🎟️", "⭐", "🎁", "🔑", "📊"];
+  var SUG_SELLO = ["⭐", "🌮", "☕", "🍺", "🍕", "🍰", "🍔", "🎲", "🎟️", "💎", "🔥", "🌸", "🍀", "🧡"];
   var ICONOS = [
+    { clave: "emoji_sello", campo: "dis-emoji-sello", sug: "sug-sello", sugs: SUG_SELLO, maq: null, defecto: "🦜" },
     { clave: "emoji_venta", campo: "dis-emoji-venta", sug: "sug-venta", maq: "dis-m-venta", defecto: "🧾" },
     { clave: "emoji_canje", campo: "dis-emoji-canje", sug: "sug-canje", maq: "dis-m-canje", defecto: "🎁" },
     { clave: "emoji_panel", campo: "dis-emoji-panel", sug: "sug-panel", maq: "dis-m-panel", defecto: "📊" }
@@ -543,9 +545,14 @@
     return "";
   }
 
+  // Maqueta del menú de caja y ejemplo de tarjeta (las fichas llevan el ícono de sellos)
   function actualizarMaqueta() {
     ICONOS.forEach(function (c) {
-      $(c.maq).textContent = $(c.campo).value.trim() || c.defecto;
+      if (c.maq) $(c.maq).textContent = $(c.campo).value.trim() || c.defecto;
+    });
+    var sello = $("dis-emoji-sello").value.trim() || "🦜";
+    Array.prototype.forEach.call($("dis-sello-ej").querySelectorAll(".ej-emoji"), function (s) {
+      s.textContent = sello;
     });
   }
 
@@ -650,7 +657,7 @@
 
   ICONOS.forEach(function (c) {
     var cont = $(c.sug);
-    SUGERENCIAS.forEach(function (em) {
+    (c.sugs || SUGERENCIAS).forEach(function (em) {
       var b = document.createElement("button");
       b.type = "button";
       b.className = "sugerencia";

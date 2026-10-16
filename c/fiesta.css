@@ -1,0 +1,163 @@
+/* Fiesta (c/fiesta.js): celebraciones de premio y recarga de la tarjeta. Estilo neoprehispánico. */
+
+/* Capa a pantalla completa: nunca bloquea clics. */
+.fiesta-capa {
+  position: fixed; inset: 0; z-index: 60;
+  pointer-events: none; overflow: hidden;
+}
+.fiesta-capa > * { position: absolute; }
+
+/* ---- Piezas comunes (confeti, hojas, destellos). Posición inicial en 0,0; el movimiento va en transform. ---- */
+.fiesta-pieza { left: 0; top: 0; will-change: transform, opacity; backface-visibility: hidden; }
+
+/* Hoja de pluma: rombo redondeado en el color de la variable --c */
+.fiesta-hoja {
+  width: 9px; height: 14px; margin: -7px 0 0 -4.5px;
+  border-radius: 0 100% 0 100%;
+  background: var(--c, #D8A245);
+  box-shadow: 0 0 6px rgba(248, 236, 210, .45);
+}
+
+/* Emoji como pieza */
+.fiesta-emoji { margin: -.6em 0 0 -.5em; font-size: 22px; line-height: 1; white-space: nowrap; }
+
+/* Destello de cuatro puntas */
+.fiesta-estrella {
+  width: 14px; height: 14px; margin: -7px 0 0 -7px;
+  background: #F1D28E;
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+}
+
+/* Premio listo: brota en abanico, sube, gira y cae desvaneciéndose */
+.fiesta-brota {
+  animation-name: fiesta-brota; animation-timing-function: ease-out; animation-fill-mode: both;
+  animation-duration: 1.5s;
+}
+@keyframes fiesta-brota {
+  0%   { transform: translate(var(--x0), var(--y0)) rotate(0deg) scale(.5); opacity: 0; }
+  12%  { opacity: 1; }
+  45%  { transform: translate(calc(var(--x0) + var(--dx)), calc(var(--y0) + var(--dy))) rotate(calc(var(--rot) * .45)) scale(1); opacity: 1; }
+  100% { transform: translate(calc(var(--x0) + var(--dx) * 1.15), calc(var(--y0) + var(--dy) + var(--caida))) rotate(var(--rot)) scale(.8); opacity: 0; }
+}
+
+/* Anillo de luz dorado que se expande desde la zona */
+.fiesta-anillo {
+  width: 120px; height: 120px; margin: -60px 0 0 -60px;
+  border-radius: 50%;
+  border: 3px solid #D8A245;
+  box-shadow: 0 0 18px rgba(216, 162, 69, .8);
+  animation: fiesta-anillo 1.1s ease-out both;
+  will-change: transform, opacity;
+}
+@keyframes fiesta-anillo {
+  from { transform: scale(.2); opacity: 1; }
+  to   { transform: scale(3.2); opacity: 0; }
+}
+
+/* Destello suave sobre la zona */
+.fiesta-destello-zona {
+  width: 260px; height: 260px; margin: -130px 0 0 -130px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(248, 236, 210, .6) 0%, rgba(241, 210, 142, .25) 35%, transparent 70%);
+  animation: fiesta-destello .9s ease-out both;
+  will-change: transform, opacity;
+}
+@keyframes fiesta-destello {
+  0%   { transform: scale(.4); opacity: 0; }
+  35%  { opacity: 1; }
+  100% { transform: scale(1.1); opacity: 0; }
+}
+
+/* ---- Recarga con Quetzalcóatl ---- */
+
+/* Velo oscuro con degradado radial dorado (la duración la fija el JS) */
+.fiesta-velo {
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 50%, rgba(216, 162, 69, .28) 0%, rgba(20, 14, 8, .55) 55%, rgba(12, 9, 6, .82) 100%);
+  animation: fiesta-velo 2.8s ease-in-out both;
+}
+@keyframes fiesta-velo {
+  0%   { opacity: 0; }
+  18%  { opacity: 1; }
+  78%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Sprite de Quetzalcóatl: el JS fija el ancho y el transform cada frame */
+.fiesta-quetzal {
+  left: 0; top: 0; height: auto; max-width: none;
+  will-change: transform;
+  filter: drop-shadow(0 0 12px rgba(216, 162, 69, .85)) drop-shadow(0 0 3px rgba(248, 236, 210, .7));
+}
+
+/* Estela: destellos y plumitas que nacen detrás de la cabeza */
+.fiesta-estela-pieza {
+  left: 0; top: 0; width: 10px; height: 10px; margin: -5px 0 0 -5px;
+  background: #F1D28E;
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+  animation: fiesta-estela .9s ease-out both;
+  will-change: transform, opacity;
+}
+.fiesta-estela-pieza.fiesta-pluma {
+  width: 8px; height: 13px; margin: -6px 0 0 -4px;
+  border-radius: 0 100% 0 100%;
+  background: #2E9F78;
+  clip-path: none;
+}
+@keyframes fiesta-estela {
+  0%   { transform: translate(var(--x0), var(--y0)) rotate(0deg) scale(.5); opacity: 0; }
+  25%  { opacity: 1; }
+  100% { transform: translate(calc(var(--x0) - var(--dx)), calc(var(--y0) + var(--dy))) rotate(var(--rot)) scale(.1); opacity: 0; }
+}
+
+/* Pulso de luz dorado desde el centro */
+.fiesta-pulso {
+  width: 40px; height: 40px; margin: -20px 0 0 -20px;
+  border-radius: 50%;
+  border: 2px solid #F1D28E;
+  box-shadow: 0 0 24px rgba(241, 210, 142, .7);
+  animation: fiesta-pulso .8s ease-out both;
+  will-change: transform, opacity;
+}
+@keyframes fiesta-pulso {
+  from { transform: scale(.5); opacity: .9; }
+  to   { transform: scale(12); opacity: 0; }
+}
+
+/* ---- Recarga de negocio ---- */
+
+/* Barrido diagonal de luz dorada (la duración la fija el JS) */
+.fiesta-barrido {
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(241, 210, 142, 0) 38%, rgba(248, 236, 210, .55) 50%, rgba(241, 210, 142, 0) 62%, transparent 70%);
+  transform: translateX(-100%);
+  animation: fiesta-barrido 1.7s ease-in-out both;
+  will-change: transform;
+}
+@keyframes fiesta-barrido {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(100%); }
+}
+
+/* Piezas de negocio que suben y se desvanecen */
+.fiesta-sube {
+  animation-name: fiesta-sube; animation-timing-function: ease-out; animation-fill-mode: both;
+  animation-duration: 1.3s;
+}
+@keyframes fiesta-sube {
+  0%   { transform: translate(var(--x0), var(--y0)) scale(.4); opacity: 0; }
+  20%  { opacity: 1; }
+  100% { transform: translate(calc(var(--x0) + var(--dx)), calc(var(--y0) - var(--subida))) scale(1) rotate(90deg); opacity: 0; }
+}
+
+/* ---- Fundido breve (movimiento reducido) ---- */
+.fiesta-destello-suave {
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(248, 236, 210, .55), rgba(216, 162, 69, .18) 60%, transparent 100%);
+  animation: fiesta-fundido .5s ease both;
+}
+@keyframes fiesta-fundido {
+  0%   { opacity: 0; }
+  50%  { opacity: 1; }
+  100% { opacity: 0; }
+}

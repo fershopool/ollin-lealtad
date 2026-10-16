@@ -172,7 +172,8 @@ as $$
                       'mensaje', (select valor from config where clave = 'q_mensaje'))
   else
     (select json_build_object('programa', c.id::text, 'nombre', c.nombre, 'tipo', c.tipo, 'logo', c.logo, 'color', c.color,
-                              'meta', greatest(c.meta, 1), 'premio', c.premio, 'unidad', c.unidad, 'mensaje', c.mensaje)
+                              'meta', greatest(c.meta, 1), 'premio', c.premio, 'unidad', c.unidad, 'mensaje', c.mensaje,
+                              'sello', c.tema->>'emoji_sello', 'tema', c.tema)
      from cafeterias c where c.id::text = p_programa)
   end
 $$;
@@ -763,7 +764,7 @@ end
 $$;
 
 -- Tema visual del negocio. p_tema es un objeto con claves opcionales: acento, acento2, fondo (#RRGGBB), fuente_titulo y fuente_texto
--- (de una lista cerrada de fuentes locales), emoji_venta, emoji_canje, emoji_panel (1 a 8 caracteres) y fondo_img (https, img/negocios/ o una foto data:image de hasta 150 000 caracteres).
+-- (de una lista cerrada de fuentes locales), emoji_venta, emoji_canje, emoji_panel, emoji_sello (1 a 8 caracteres; emoji_sello reemplaza al quetzal en las fichas de la tarjeta del cliente) y fondo_img (https, img/negocios/ o una foto data:image de hasta 150 000 caracteres).
 -- Guarda solo lo válido y reemplaza el tema entero; vacío o {} lo restablece. Un dato inválido no cambia nada.
 create or replace function guardar_tema(p_pin text, p_tema json) returns json
 language plpgsql security definer set search_path = public, extensions, pg_temp
@@ -801,7 +802,7 @@ begin
       if val not in ('instrument-serif', 'dm-sans', 'sistema', 'georgia', 'redondeada', 'mono') then
         return json_build_object('ok', false, 'error', 'tema_invalido');
       end if;
-    elsif k in ('emoji_venta', 'emoji_canje', 'emoji_panel') then
+    elsif k in ('emoji_venta', 'emoji_canje', 'emoji_panel', 'emoji_sello') then
       if char_length(val) > 8 or val ~ '[<>&"''`\\[:space:]]' then return json_build_object('ok', false, 'error', 'tema_invalido'); end if;
     elsif k = 'fondo_img' then
       if not ((char_length(val) <= 150000 and val ~ '^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$')

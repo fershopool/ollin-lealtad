@@ -592,6 +592,14 @@ select pg_temp.debe_err(public.guardar_tema('700006', json_build_object('fondo_i
 select pg_temp.debe_err(public.guardar_tema('700006', json_build_object('fondo_img', 'data:image/png;base64,' || repeat('A', 150000))), 'tema_invalido', 'u: fondo demasiado grande');
 select pg_temp.debe_ok(public.guardar_tema('700006', '{}'::json), 'u: limpiar el tema');
 
+-- v) El emoji de sello y el tema viajan en la config del programa del negocio (lo que lee la tarjeta del cliente).
+select pg_temp.debe_ok(public.guardar_tema('700006', '{"emoji_sello":"🎲","acento":"#B94030"}'::json), 'v: guardar emoji de sello');
+select pg_temp.chk(public.tarjeta(current_setting('qz.rt')::uuid, current_setting('qz.rp'))->'config'->>'sello' = '🎲'
+  and public.tarjeta(current_setting('qz.rt')::uuid, current_setting('qz.rp'))->'config'->'tema'->>'acento' = '#B94030', 'v: la config trae sello y tema');
+select pg_temp.chk((public.tarjeta(current_setting('qz.rt')::uuid)->'config'->>'sello') is null, 'v: Quetzalitos no lleva sello propio');
+select pg_temp.debe_err(public.guardar_tema('700006', '{"emoji_sello":"<img>"}'::json), 'tema_invalido', 'v: emoji de sello con marcado');
+select pg_temp.debe_ok(public.guardar_tema('700006', '{}'::json), 'v: limpiar');
+
 -- Cuenta de control: entra como una cafeteria, marca admin y no sale en métricas ni se puede volver distribuidor.
 select pg_temp.debe_ok(public.crear_cafeteria('admin-prueba', 'Control Quetzalitos', 'Quetzalitos', '800001'), 'r: alta de la cuenta de control');
 update public.cafeterias set super_admin = true where slug = 'control-quetzalitos-quetzalitos';

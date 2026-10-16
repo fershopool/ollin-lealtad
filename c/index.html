@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="robots" content="noindex">
   <meta name="theme-color" content="#06241B">
   <title>Tu tarjeta de sellos</title>
@@ -10,47 +10,57 @@
   <link rel="apple-touch-icon" href="../img/icono.png">
   <link rel="stylesheet" href="../fonts/fonts.css?v=10">
   <link rel="stylesheet" href="../estilo.css?v=10">
-  <link rel="stylesheet" href="c.css?v=10">
+  <link rel="stylesheet" href="c.css?v=14">
+  <link rel="stylesheet" href="fiesta.css?v=13">
 </head>
 <body>
 <main>
   <header class="cabecera"><div class="greca"></div></header>
-
-  <div class="logo-halo"><img id="logo" src="../img/logo.png" alt="" width="476" height="478"></div>
-  <h1 id="titulo" class="centro">Tu tarjeta de sellos</h1>
-  <div class="divisor" aria-hidden="true"><i></i></div>
-
   <p id="estado" aria-live="polite" class="oculto"></p>
-  <button id="btn-reintentar" class="btn btn-claro oculto" type="button">Reintentar</button>
 
-  <section id="sin-tarjeta" class="marco centro">
-    <p class="rotulo">Bienvenido</p>
-    <h2>Escanea el QR que te muestran en caja</h2>
-    <p>Cuando compres, empieza a juntar sellos.</p>
-  </section>
-
-  <section id="tarjeta" class="marco oculto">
+  <div class="cabeza">
+    <div class="logo-halo"><img id="logo" src="../img/logo.png" alt="" width="476" height="478"></div>
+    <h1 id="titulo" class="centro">Tu tarjeta de sellos</h1>
+    <div class="divisor" aria-hidden="true"><i></i></div>
     <div id="programas" class="oculto"></div>
-    <p class="rotulo">Tu tarjeta</p>
-    <div id="sellos" class="sellos"></div>
-    <p id="texto" class="centro" aria-live="polite"></p>
-    <p id="mensaje" class="letra-chica oculto"></p>
+  </div>
 
-    <button id="btn-premio" class="btn btn-oro btn-premio oculto" type="button">Canjear mi premio</button>
+  <div class="cuerpo">
+    <button id="btn-reintentar" class="btn btn-claro oculto" type="button">Reintentar</button>
 
-    <div id="bloque-canje" class="placa oculto">
-      <p class="centro">Díselo al personal de caja</p>
-      <p id="codigo-canje" class="codigo"></p>
-      <div class="barra"><i id="barra-canje"></i></div>
-      <p id="cuenta-canje" class="centro"></p>
-    </div>
-  </section>
+    <section id="sin-tarjeta" class="marco centro">
+      <p class="rotulo">Bienvenido</p>
+      <h2>Escanea el QR que te muestran en caja</h2>
+      <p>Cuando compres, empieza a juntar sellos.</p>
+    </section>
 
-  <p class="letra-chica">
-    Tu tarjeta vive en este teléfono. No pedimos nombre, correo ni otros datos personales.
-  </p>
+    <section id="tarjeta" class="marco oculto">
+      <p class="rotulo">Tu tarjeta</p>
+      <div id="zona-sellos" class="zona-sellos">
+        <div id="sellos" class="sellos"></div>
+        <div id="bloque-canje" class="placa oculto">
+          <p class="centro">Díselo al personal de caja</p>
+          <p id="codigo-canje" class="codigo"></p>
+          <div class="barra"><i id="barra-canje"></i></div>
+          <p id="cuenta-canje" class="centro"></p>
+        </div>
+      </div>
+
+      <div id="banda" class="sello premio">
+        <span id="banda-ico" class="ico-premio oculto" aria-hidden="true"></span>
+        <span id="banda-txt"></span>
+      </div>
+
+      <div class="franja">
+        <p id="texto" class="centro" aria-live="polite"></p>
+        <button id="btn-premio" class="btn btn-oro btn-premio oculto" type="button">Canjear mi premio</button>
+      </div>
+      <p id="mensaje" class="letra-chica oculto"></p>
+    </section>
+  </div>
 
   <footer class="pie">
+    <p class="letra-chica privacidad">Tu tarjeta vive en este teléfono. No pedimos nombre, correo ni otros datos personales.</p>
     <p class="firma">Fidelización Tlatolli · Desarrollado por <span class="ollin">OLLIN</span></p>
     <div class="greca"></div>
   </footer>
@@ -58,6 +68,7 @@
 
 <script src="../config.js?v=10"></script>
 <script src="../lib.js?v=10"></script>
-<script src="c.js?v=10"></script>
+<script src="fiesta.js?v=13"></script>
+<script src="c.js?v=14"></script>
 </body>
 </html>

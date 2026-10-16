@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="../img/icono.png">
   <link rel="stylesheet" href="../fonts/fonts.css?v=10">
   <link rel="stylesheet" href="../estilo.css?v=10">
-  <link rel="stylesheet" href="negocio.css?v=12">
+  <link rel="stylesheet" href="negocio.css?v=13">
 </head>
 <body class="con-nav">
 <main>
@@ -137,6 +137,13 @@
           <span class="maq-item"><span id="dis-m-canje" class="maq-ico">🎁</span><span>Canje</span></span>
           <span class="maq-item"><span id="dis-m-panel" class="maq-ico">📊</span><span>Panel</span></span>
         </div>
+        <div id="dis-sello-ej" class="sello-ej" aria-hidden="true">
+          <span class="ficha lleno"><span class="ej-emoji">🦜</span></span>
+          <span class="ficha lleno"><span class="ej-emoji">🦜</span></span>
+          <span class="ficha vacio"><span class="ej-emoji">🦜</span></span>
+          <span class="ficha vacio"><span class="ej-emoji">🦜</span></span>
+          <span class="ficha vacio"><span class="ej-emoji">🦜</span></span>
+        </div>
       </div>
 
       <form id="form-diseno" class="pila" novalidate>
@@ -203,6 +210,11 @@
         <details class="grupo">
           <summary>Íconos e imagen</summary>
           <div class="divisor" aria-hidden="true"><i></i></div>
+          <label for="dis-emoji-sello">Ícono de tus sellos (tarjeta del cliente)</label>
+          <input id="dis-emoji-sello" class="campo-c" type="text" maxlength="8" autocomplete="off" aria-describedby="dis-emoji-sello-ayuda">
+          <p id="dis-emoji-sello-ayuda" class="ayuda">Reemplaza al quetzal en las fichas de tu tarjeta. Vacío = quetzal.</p>
+          <div id="sug-sello" class="sugerencias"></div>
+
           <label for="dis-emoji-venta">Ícono de «Generar QR por venta»</label>
           <input id="dis-emoji-venta" class="campo-c" type="text" maxlength="8" autocomplete="off">
           <div id="sug-venta" class="sugerencias"></div>
@@ -279,6 +291,6 @@
 
 <script src="../config.js?v=10"></script>
 <script src="../lib.js?v=10"></script>
-<script src="negocio.js?v=12"></script>
+<script src="negocio.js?v=13"></script>
 </body>
 </html>
