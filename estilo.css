@@ -21,10 +21,33 @@
   --azul-osc: #14409E;
   --azul-neon: #4C8DFF;
   --azul-claro: #B3D0FF;
+  --azul-med: #2F6BE6;
   --alerta: #C62F25;
   --serif: "Instrument Serif", "Iowan Old Style", Palatino, Georgia, serif;
   --sans: "DM Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --paso: 12px;
+  --brillo-1: rgba(228, 0, 124, .32);
+  --brillo-2: rgba(76, 141, 255, .24);
+  --brillo-3: rgba(255, 138, 31, .18);
+  --brillo-4: rgba(31, 182, 122, .30);
+  --greca-degradado: linear-gradient(90deg, var(--rosa) 0%, var(--naranja) 24%, var(--lima) 48%, var(--esmeralda) 70%, var(--azul-neon) 100%);
+  --marco-degradado: linear-gradient(135deg, var(--rosa-neon), var(--naranja) 34%, var(--esmeralda) 66%, var(--azul-neon));
+}
+
+/* ---------- Marca Tlatolli (portada, caja, panel del negocio y panel de control): los colores de su logo ----------
+   Verde jade profundo, crema, terracota y oro. Va en <html data-marca="tlatolli">. Un tema del negocio (Q.tema) lo sobrepone con estilo en línea.
+   La tarjeta del cliente de Quetzalitos NO la usa: conserva su «selva neón». */
+:root[data-marca="tlatolli"] {
+  --noche: #03211A; --selva: #07382A; --selva-2: #0F5240;
+  --jade: #1F7A5C; --jade-osc: #155A44; --esmeralda: #2E9F78;
+  --menta: #E3CC98; --lima: #F0C879;
+  --hielo: #F8ECD2; --niebla: #CDBF9F;
+  --rosa: #B94030; --rosa-osc: #8F2D1F; --rosa-neon: #DE6B55; --rosa-claro: #F3B9A8;
+  --naranja: #D8A245; --naranja-osc: #AE7D24; --naranja-claro: #F1D28E;
+  --azul: #1F6F63; --azul-osc: #14504A; --azul-med: #2A8A7B; --azul-neon: #4DB5A0; --azul-claro: #BFE6DB;
+  --brillo-1: rgba(194, 67, 46, .30); --brillo-2: rgba(46, 159, 120, .22); --brillo-3: rgba(214, 162, 60, .20); --brillo-4: rgba(31, 122, 92, .34);
+  --greca-degradado: linear-gradient(90deg, var(--rosa) 0%, var(--naranja) 28%, var(--hielo) 50%, var(--esmeralda) 74%, var(--azul-neon) 100%);
+  --marco-degradado: linear-gradient(135deg, var(--rosa-neon), var(--naranja) 38%, var(--hielo) 56%, var(--esmeralda));
 }
 
 * { box-sizing: border-box; }
@@ -37,10 +60,10 @@ body {
   font-size: 18px;
   line-height: 1.4;
   background:
-    radial-gradient(75% 38% at 100% 0%, rgba(228, 0, 124, .32) 0%, rgba(228, 0, 124, 0) 70%),
-    radial-gradient(70% 30% at 0% 30%, rgba(76, 141, 255, .24) 0%, rgba(76, 141, 255, 0) 70%),
-    radial-gradient(70% 30% at 100% 68%, rgba(255, 138, 31, .18) 0%, rgba(255, 138, 31, 0) 70%),
-    radial-gradient(85% 42% at 0% 100%, rgba(31, 182, 122, .30) 0%, rgba(31, 182, 122, 0) 70%),
+    radial-gradient(75% 38% at 100% 0%, var(--brillo-1) 0%, transparent 70%),
+    radial-gradient(70% 30% at 0% 30%, var(--brillo-2) 0%, transparent 70%),
+    radial-gradient(70% 30% at 100% 68%, var(--brillo-3) 0%, transparent 70%),
+    radial-gradient(85% 42% at 0% 100%, var(--brillo-4) 0%, transparent 70%),
     linear-gradient(180deg, var(--selva) 0%, var(--noche) 100%);
 }
 /* Trama de grecas escalonadas, apenas visible */
@@ -51,10 +74,13 @@ body::before {
   mask: url(img/trama.svg) 0 0 / 96px auto repeat;
 }
 
+/* Imagen de fondo opcional del tema del negocio (variable --fondo-img puesta por Q.tema) */
+body::after { content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none; background: var(--fondo-img, none) center / cover no-repeat; opacity: .24; }
+
 main {
   position: relative; z-index: 1;
   display: flex; flex-direction: column;
-  max-width: 480px; min-height: 100vh; margin: 0 auto; padding: 20px 16px 36px;
+  max-width: 480px; min-height: 100vh; min-height: 100dvh; margin: 0 auto; padding: 20px 16px 36px;
 }
 
 h1, h2 { font-family: var(--serif); font-weight: 400; letter-spacing: .01em; color: var(--hielo); }
@@ -65,7 +91,7 @@ label { display: block; margin-bottom: 8px; color: var(--menta); font-size: .8re
 /* ---------- Grecas escalonadas teñidas con degradado ---------- */
 .greca {
   height: 16px;
-  background: linear-gradient(90deg, var(--rosa) 0%, var(--naranja) 24%, var(--lima) 48%, var(--esmeralda) 70%, var(--azul-neon) 100%);
+  background: var(--greca-degradado);
   -webkit-mask: url(img/greca.svg) repeat-x left bottom / auto 100%;
   mask: url(img/greca.svg) repeat-x left bottom / auto 100%;
 }
@@ -117,7 +143,7 @@ label { display: block; margin-bottom: 8px; color: var(--menta); font-size: .8re
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), 0 10px 28px -8px rgba(228, 0, 124, .85), 0 0 0 1px rgba(255, 196, 138, .70);
 }
 .btn-azul {
-  background: linear-gradient(135deg, #2F6BE6 0%, var(--azul-osc) 100%);
+  background: linear-gradient(135deg, var(--azul-med) 0%, var(--azul-osc) 100%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .30), 0 10px 28px -8px rgba(76, 141, 255, .80), 0 0 0 1px rgba(179, 208, 255, .60);
 }
 .btn-claro {
@@ -314,4 +340,129 @@ select.campo option { background: var(--selva); color: var(--hielo); }
 @media (prefers-reduced-motion: reduce) {
   .logo-halo::after, .sello.premio.listo, .sello.premio.listo::before, .exito::before, .aviso.fiesta, .sello.nuevo, .btn-premio, .btn-premio::before { animation: none; }
   .btn { transition: none; }
+}
+
+/* ---------- Fichas en filas de 5: con más de 6 sellos (clase «cinco» en .sellos) ---------- */
+.sellos.cinco { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.sellos.cinco .sello { flex: 0 0 calc((100% - 40px) / 5); width: calc((100% - 40px) / 5); max-width: 84px; }
+.sellos.cinco .sello.premio { flex: 0 0 100%; width: 100%; max-width: none; }
+
+/* ---------- Menú flotante inferior, tipo app (botones .nav-item con .nav-ico + texto) ---------- */
+body.con-nav main { padding-bottom: calc(104px + env(safe-area-inset-bottom)); }
+body.con-nav .pie { display: none; }
+.nav-flotante {
+  position: fixed; z-index: 30; left: 50%; bottom: calc(12px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+  display: flex; gap: 4px; width: min(calc(100% - 24px), 520px); padding: 6px;
+  border-radius: 26px; background: rgba(4, 23, 15, .84);
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  box-shadow: 0 0 0 1px rgba(141, 240, 192, .38), 0 18px 40px -10px rgba(0, 0, 0, .75), 0 0 44px -12px rgba(228, 0, 124, .55);
+}
+.nav-item {
+  flex: 1; min-width: 0; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  padding: 6px 2px; border: 0; border-radius: 20px; background: transparent; color: var(--niebla);
+  font: inherit; font-size: .72rem; font-weight: 700; letter-spacing: .03em; line-height: 1.1; text-align: center; text-decoration: none;
+  cursor: pointer; transition: background .2s ease, color .2s ease, transform .12s ease;
+}
+.nav-item span { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-item:active { transform: scale(.95); }
+.nav-item:focus-visible { outline: 3px solid var(--lima); outline-offset: 1px; }
+.nav-item.activo, .nav-item[aria-current="page"] {
+  color: #FFFFFF; background: linear-gradient(135deg, var(--rosa) 0%, var(--rosa-osc) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .32), 0 6px 18px -6px rgba(228, 0, 124, .85);
+}
+.nav-ico { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+@media (max-width: 360px) { .nav-item { font-size: .66rem; } }
+@media (prefers-reduced-motion: reduce) { .nav-item { transition: none; } }
+
+/* Pantallas bajas: logo más chico para que la portada y el login quepan sin scroll. */
+@media (max-height: 700px) {
+  .logo-halo { width: 196px; height: 196px; margin: 4px auto; }
+  .logo-halo img { width: 150px; }
+  h1 { font-size: 2rem; margin: 4px 0 12px; }
+}
+
+/* ---------- Base «pro» para los paneles de negocio (caja y negocio): superficies de cristal, aire y radios consistentes ---------- */
+:root { --r-card: 22px; --gap: 16px; --superficie: rgba(255, 255, 255, .055); --superficie-2: rgba(255, 255, 255, .09); --borde: rgba(255, 255, 255, .13); --sombra-card: 0 18px 40px -20px rgba(0, 0, 0, .65); }
+.superficie {
+  position: relative; padding: 18px; border-radius: var(--r-card);
+  background: var(--superficie); border: 1px solid var(--borde); box-shadow: var(--sombra-card);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+}
+.pila { display: flex; flex-direction: column; gap: var(--gap); }
+
+/* Menú flotante con más aire entre botones */
+.nav-flotante { gap: 8px; padding: 8px; border-radius: 28px; width: min(calc(100% - 24px), 560px); }
+.nav-item { min-height: 60px; border-radius: 20px; gap: 4px; }
+@media (max-width: 380px) { .nav-flotante { gap: 4px; padding: 6px; } .nav-item { min-height: 56px; } }
+
+/* ---------- Adornos neoprehispánicos reutilizables ---------- */
+/* Divisor con rombo dorado: <div class="divisor" aria-hidden="true"><i></i></div> */
+.divisor { display: flex; align-items: center; gap: 12px; margin: 14px 0; color: var(--naranja); }
+.divisor::before, .divisor::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, transparent, currentColor); opacity: .8; }
+.divisor::after { transform: scaleX(-1); }
+.divisor i { flex: none; width: 8px; height: 8px; transform: rotate(45deg); background: currentColor; box-shadow: 0 0 0 3px rgba(255, 255, 255, .07); }
+
+/* ---------- Adaptación a la forma del teléfono (alto y orientación) ----------
+   Teléfonos con barra del navegador visible o pantallas chicas: menos relleno, menú más bajo y tipografía fluida. */
+html { -webkit-text-size-adjust: 100%; }
+body { font-size: clamp(16px, 4.4vw, 18px); }
+h1 { font-size: clamp(1.7rem, 7.2vw, 2.3rem); }
+@media (max-height: 700px) {
+  body.con-nav main { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
+  .nav-flotante { bottom: calc(8px + env(safe-area-inset-bottom)); padding: 6px; gap: 6px; border-radius: 24px; }
+  .nav-item { min-height: 52px; border-radius: 18px; gap: 2px; font-size: .68rem; }
+  .nav-ico { width: 22px; height: 22px; }
+}
+@media (max-height: 580px) {
+  body.con-nav main { padding-bottom: calc(70px + env(safe-area-inset-bottom)); }
+  .nav-flotante { bottom: calc(6px + env(safe-area-inset-bottom)); padding: 5px; }
+  .nav-item { min-height: 46px; font-size: .62rem; }
+  .nav-ico { width: 20px; height: 20px; }
+}
+/* Teléfono en horizontal: el menú se vuelve una píldora compacta de íconos y solo el activo muestra su nombre. */
+@media (max-height: 480px) and (orientation: landscape) {
+  body.con-nav main { padding-bottom: calc(66px + env(safe-area-inset-bottom)); }
+  .nav-flotante { width: min(calc(100% - 24px), 440px); }
+  .nav-item { min-height: 44px; flex-direction: row; justify-content: center; gap: 6px; }
+  .nav-item:not(.activo):not([aria-current="page"]) span { display: none; }
+}
+@media (max-width: 340px) { .nav-item span { font-size: .6rem; letter-spacing: 0; } }
+
+/* ---------- Pantalla de carga Tlatolli: logo con destello, anillo dorado giratorio y greca en marcha ---------- */
+.cargador { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; min-height: 62vh; min-height: 62dvh; text-align: center; }
+.cargador-anillo {
+  position: relative; width: min(64vw, 230px); padding: 3px; border-radius: 22px; overflow: hidden;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--naranja) 50%, transparent), 0 18px 46px -14px rgba(0, 0, 0, .75), 0 0 46px -10px color-mix(in srgb, var(--naranja) 55%, transparent);
+  animation: cargador-latido 2.6s ease-in-out infinite;
+}
+.cargador-anillo::before {
+  content: ""; position: absolute; inset: -80%; z-index: 0;
+  background: conic-gradient(from 0deg, transparent 0 55%, color-mix(in srgb, var(--naranja) 70%, transparent) 78%, var(--naranja-claro) 92%, var(--hielo) 100%);
+  animation: cargador-giro 2.4s linear infinite;
+}
+.cargador-logo { position: relative; z-index: 1; border-radius: 19px; overflow: hidden; background: var(--selva); line-height: 0; }
+.cargador-logo img { display: block; width: 100%; height: auto; }
+.cargador-logo::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(105deg, transparent 38%, rgba(255, 244, 214, .34) 50%, transparent 62%);
+  transform: translateX(-120%); animation: cargador-destello 2.6s ease-in-out infinite;
+}
+.cargador-texto { margin: 0; color: var(--hielo); font-family: var(--serif); font-size: 1.5rem; letter-spacing: .03em; }
+.cargador-texto::after { content: ""; display: inline-block; width: 1.4em; text-align: left; animation: cargador-puntos 1.4s steps(4, end) infinite; }
+.cargador-greca {
+  width: min(52vw, 190px); height: 14px; background: var(--greca-degradado);
+  -webkit-mask: url(img/greca.svg) repeat-x 0 100% / auto 100%; mask: url(img/greca.svg) repeat-x 0 100% / auto 100%;
+  animation: cargador-marcha 1.1s linear infinite; opacity: .9;
+}
+@keyframes cargador-giro { to { transform: rotate(360deg); } }
+@keyframes cargador-latido { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.025); } }
+@keyframes cargador-destello { 0% { transform: translateX(-120%); } 55%, 100% { transform: translateX(120%); } }
+@keyframes cargador-puntos { 0% { content: ""; } 25% { content: "."; } 50% { content: ".."; } 75%, 100% { content: "..."; } }
+@keyframes cargador-marcha { to { -webkit-mask-position: 28px 100%; mask-position: 28px 100%; } }
+/* Con un error (el texto «Verificando» oculto) todo se detiene y queda el mensaje */
+#carga:has(#carga-verificando.oculto) .cargador-anillo, #carga:has(#carga-verificando.oculto) .cargador-anillo::before,
+#carga:has(#carga-verificando.oculto) .cargador-logo::after, #carga:has(#carga-verificando.oculto) .cargador-greca { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .cargador-anillo, .cargador-anillo::before, .cargador-logo::after, .cargador-greca, .cargador-texto::after { animation: none; }
+  .cargador-texto::after { content: "…"; }
 }

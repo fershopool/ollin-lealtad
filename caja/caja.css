@@ -1,0 +1,242 @@
+/* Caja · marca Tlatolli. Cada pantalla cabe en 360×640 y 375×667 sin scroll. Solo afecta a body.caja.
+   Colores siempre por variables (el tema del negocio las sobrepone). Sin neón. */
+
+body.caja main { max-width: 520px; min-height: 100vh; min-height: 100dvh; padding: 12px 16px calc(18px + env(safe-area-inset-bottom)); }
+body.caja .pie { display: none; }
+body.caja .cabecera { margin: -12px calc(50% - 50vw) 8px; }
+body.caja main > section { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+body.caja h1 { font-size: 1.6rem; line-height: 1.1; margin: 0 0 12px; }
+body.caja p { margin: 4px 0; }
+
+/* Foco visible dorado; pulsación sutil */
+body.caja :focus-visible, body.caja .btn:focus-visible { outline: 2px solid var(--naranja); outline-offset: 3px; }
+body.caja .btn:active { filter: brightness(.95); }
+
+/* Botones primarios: sombra sobria (sin halo neón) */
+body.caja .btn-oro {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22), 0 10px 22px -14px rgba(0, 0, 0, .75);
+  border: 1px solid var(--naranja);
+  border-color: color-mix(in srgb, var(--naranja) 55%, transparent);
+}
+
+/* ---------- Encabezado: avatar con anillo dorado, nombre en serif crema, tipo · escuela ---------- */
+.caja-cab { display: flex; align-items: center; gap: 12px; padding: 4px 2px 0; }
+.caja-logo {
+  flex: none; display: grid; place-items: center; width: 68px; height: 68px; padding: 6px; border-radius: 50%;
+  background: var(--hielo);
+  box-shadow: 0 0 0 2px var(--naranja), 0 0 0 4px var(--selva), 0 10px 20px -12px rgba(0, 0, 0, .8);
+}
+.caja-logo img { width: 100%; height: 100%; object-fit: contain; border-radius: 50%; }
+.caja-info { flex: 1; min-width: 0; }
+.caja-info h1 {
+  font-size: 1.35rem; margin: 0; overflow: hidden; overflow-wrap: anywhere; color: var(--hielo);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+#tipo { margin: 3px 0 0; font-size: .8rem; font-weight: 600; color: var(--niebla); overflow-wrap: anywhere; }
+.caja-cab .btn {
+  flex: none; width: auto; min-width: 0; min-height: 40px; margin: 0; padding: 0 14px;
+  background: transparent; color: var(--niebla); border: 1px solid var(--borde); border-radius: 999px;
+  box-shadow: none; backdrop-filter: none; font-size: .9rem; font-weight: 600;
+}
+.caja-cab .btn:hover { background: var(--superficie); filter: none; }
+#menu .divisor { margin: 0 0 16px; }
+
+/* ---------- Menú: tarjetas de cristal oscuro con filete dorado fino ---------- */
+.acciones { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-content: start; }
+.acciones .btn {
+  position: relative; width: 100%; min-width: 0; min-height: 96px; margin: 0; padding: 16px 16px 16px 84px;
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px;
+  text-align: left; font-size: 1rem; color: var(--hielo);
+  background: var(--superficie); border: 1px solid var(--borde); border-color: color-mix(in srgb, var(--naranja) 45%, transparent);
+  border-radius: 18px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), var(--sombra-card);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+}
+.acciones .btn:active { transform: translateY(2px) scale(.98); filter: brightness(.96); }
+
+/* Insignia de 48 px (fondo) + ícono encima; el color lo marca --insignia de cada botón */
+.acciones .btn::before {
+  content: ""; position: absolute; left: 16px; top: 50%; width: 48px; height: 48px; margin-top: -24px; border-radius: 14px;
+  background: var(--insignia); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25), 0 8px 16px -10px rgba(0, 0, 0, .7);
+  -webkit-mask: none; mask: none;
+}
+.acciones .btn::after {
+  content: ""; position: absolute; left: 27px; right: auto; top: 50%; width: 26px; height: 26px; margin-top: -13px;
+  background: #FFFFFF; pointer-events: none; opacity: 1;
+  -webkit-mask: var(--icono) center / contain no-repeat; mask: var(--icono) center / contain no-repeat;
+}
+.acciones .btn.con-emoji::before, .acciones .btn.con-emoji::after { display: none; }
+.acciones .btn .emoji {
+  position: absolute; left: 16px; top: 50%; width: 48px; height: 48px; margin: -24px 0 0; border-radius: 14px;
+  display: grid; place-items: center; background: var(--insignia); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25);
+  font-size: 24px; line-height: 1; white-space: nowrap; overflow: hidden;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+}
+
+.acciones .btn-titulo { font-size: 1.35rem; line-height: 1.1; color: var(--hielo); }
+.acciones .btn-sub { font-size: .85rem; font-weight: 500; line-height: 1.25; color: var(--niebla); }
+
+.icono-postre { --icono: url(../img/icono-postre.svg); }
+.icono-estrella { --icono: url(../img/glifo-estrella.svg); }
+.icono-panel { --icono: url(../img/quetzal.svg); }
+.acciones #btn-venta { --insignia: rgba(255, 255, 255, .14); }
+.acciones #btn-venta-q { --insignia: linear-gradient(135deg, var(--naranja) 0%, var(--naranja-osc) 100%); }
+.acciones #btn-canje { --insignia: linear-gradient(135deg, var(--jade) 0%, var(--jade-osc) 100%); }
+.acciones #btn-panel { --insignia: linear-gradient(135deg, var(--selva-2) 0%, var(--noche) 100%); }
+.acciones #btn-control { --insignia: linear-gradient(135deg, var(--azul) 0%, var(--azul-osc) 100%); }
+
+/* Acción principal: tarjeta ancha terracota → terracota oscuro, con grecas en una esquina */
+.acciones #btn-venta {
+  grid-column: 1 / -1; min-height: 104px; padding-right: 56px;
+  background: linear-gradient(135deg, var(--rosa) 0%, var(--rosa-osc) 100%);
+  border-color: color-mix(in srgb, var(--naranja) 55%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22), 0 14px 26px -18px rgba(0, 0, 0, .75);
+}
+.acciones #btn-venta .btn-titulo { font-size: 1.5rem; color: #FFFFFF; }
+.acciones #btn-venta .btn-sub { color: rgba(255, 255, 255, .88); }
+.acciones .greca-esq {
+  position: absolute; right: 16px; bottom: 10px; width: 96px; height: 16px; pointer-events: none;
+  background: linear-gradient(90deg, var(--naranja-claro), var(--naranja));
+  opacity: .55;
+  -webkit-mask: url(../img/greca.svg) repeat-x left bottom / auto 100%; mask: url(../img/greca.svg) repeat-x left bottom / auto 100%;
+}
+.acciones .chevron {
+  position: absolute; right: 18px; top: 50%; transform: translateY(-50%);
+  font-size: 2rem; line-height: 1; color: rgba(255, 255, 255, .85); pointer-events: none;
+}
+/* Control: ancha pero sobria, no compite con la venta */
+.acciones #btn-control { grid-column: 1 / -1; }
+
+/* Sin huecos: el panel siempre a lo ancho y «Canjear» también cuando no hay botón de Quetzalitos. */
+.acciones #btn-panel, .acciones #btn-venta-q.oculto ~ #btn-canje { grid-column: 1 / -1; }
+/* Tarjetas de media columna: insignia arriba y texto debajo (así el texto no se aprieta) */
+.acciones #btn-venta-q, .acciones #btn-canje { min-height: 132px; padding: 74px 14px 14px; justify-content: flex-start; }
+.acciones #btn-venta-q::before, .acciones #btn-canje::before, .acciones #btn-venta-q .emoji, .acciones #btn-canje .emoji { left: 14px; top: 14px; margin: 0; }
+.acciones #btn-venta-q::after, .acciones #btn-canje::after { left: 25px; top: 25px; margin: 0; }
+.acciones #btn-venta-q .btn-titulo, .acciones #btn-canje .btn-titulo { font-size: 1.25rem; }
+/* Quetzalitos: acento oro; el medallón (logo) sustituye a la insignia */
+.acciones #btn-venta-q { border-color: color-mix(in srgb, var(--naranja) 60%, transparent); }
+.acciones #btn-venta-q .btn-titulo { color: var(--naranja-claro); }
+.acciones #btn-venta-q::before, .acciones #btn-venta-q::after { display: none; }
+/* Medallón: círculo crema, aro dorado de 2.5 px y anillo blanco exterior (outline) */
+.acciones #btn-venta-q .logo-q {
+  position: absolute; left: 14px; top: 14px; width: 52px; height: 52px; border-radius: 50%; object-fit: cover;
+  background: var(--hielo); border: 2.5px solid var(--naranja);
+  box-shadow: 0 6px 14px -8px rgba(0, 0, 0, .8); pointer-events: none;
+}
+
+/* Mensajes compactos (menú y venta: debajo de los botones, no los mueven) */
+#menu-msg.aviso, #menu-msg.error, #venta-msg.aviso, #venta-msg.error {
+  margin: 12px 0 0; padding: 10px 12px 10px 18px; font-size: .92rem; line-height: 1.3;
+}
+
+/* ---------- Venta: QR en superficie con marco dorado de esquinas escalonadas ---------- */
+#venta h1 { font-size: 1.5rem; margin: 0 0 12px; text-align: center; }
+#venta .venta-tarjeta { padding: 16px; }
+#venta .qr-caja {
+  position: relative; width: min(74vw, 42vh); width: min(74vw, 42dvh); max-width: none; margin: 0 auto 12px; padding: 10px;
+  background: #FFFFFF; border: 0; border-radius: 14px;
+  box-shadow: 0 12px 24px -14px rgba(0, 0, 0, .8);
+}
+/* Esquinas escalonadas doradas (12 capas: L + escalón por esquina), fuera del QR */
+#venta .qr-caja::before {
+  content: ""; position: absolute; inset: -9px; pointer-events: none;
+  background-image:
+    linear-gradient(var(--naranja), var(--naranja)), linear-gradient(var(--naranja), var(--naranja)), linear-gradient(var(--naranja), var(--naranja)),
+    linear-gradient(var(--naranja), var(--naranja)), linear-gradient(var(--naranja), var(--naranja)), linear-gradient(var(--naranja), var(--naranja)),
+    linear-gradient(var(--naranja), var(--naranja)), linear-gradient(var(--naranja), var(--naranja)), linear-gradient(var(--naranja), var(--naranja)),
+    linear-gradient(var(--naranja), var(--naranja)), linear-gradient(var(--naranja), var(--naranja)), linear-gradient(var(--naranja), var(--naranja));
+  background-repeat: no-repeat;
+  background-size: 14px 2px, 2px 14px, 5px 5px, 14px 2px, 2px 14px, 5px 5px, 14px 2px, 2px 14px, 5px 5px, 14px 2px, 2px 14px, 5px 5px;
+  background-position:
+    0 0, 0 0, 5px 5px,
+    100% 0, 100% 0, calc(100% - 5px) 5px,
+    0 100%, 0 100%, 5px calc(100% - 5px),
+    100% 100%, 100% 100%, calc(100% - 5px) calc(100% - 5px);
+}
+#venta .qr-caja svg { display: block; width: 100%; height: auto; }
+/* Medallón del logo: 22 % del ancho, centrado; anillo blanco de 4 px (zona silenciosa) */
+#venta .qr-logo {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 22%; height: auto; aspect-ratio: 1; border-radius: 50%; object-fit: cover;
+  background: var(--hielo); border: 2.5px solid var(--naranja);
+  outline: 4px solid #FFFFFF; outline-offset: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .3);
+}
+#venta .venta-tarjeta p { margin: 0 0 6px; font-size: .92rem; text-align: center; color: var(--niebla); }
+#venta .cuenta { margin: 0; font-size: 2.2rem; line-height: 1.1; }
+#venta .barra { height: 6px; margin: 12px 0 0; background: rgba(255, 255, 255, .10); box-shadow: none; }
+#venta .barra i { background: linear-gradient(90deg, var(--naranja) 0%, var(--rosa) 100%); box-shadow: none; }
+#venta .botones-venta { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+#venta .botones-venta .btn { min-height: 56px; margin: 0; padding: 0 10px; font-size: .95rem; }
+#venta #btn-cancelar-venta {
+  background: transparent; color: #FF8A80; border: 1.5px solid rgba(255, 138, 128, .75);
+  box-shadow: none; backdrop-filter: none;
+}
+#venta #btn-cancelar-venta:hover { background: rgba(255, 138, 128, .10); filter: none; }
+
+/* ---------- Canje: formulario en superficie; el hueco del mensaje está reservado ---------- */
+#canje .superficie { padding: 18px 16px; }
+#canje label { margin-bottom: 8px; }
+#canje .campo { min-height: 64px; margin: 0 0 4px; padding: 6px 8px; font-size: 2.1rem; }
+#canje #btn-validar { margin: 0; }
+#canje .ranura-msg { min-height: 84px; margin-top: 12px; }
+#canje #canje-msg.aviso, #canje #canje-msg.error { margin: 0; }
+#canje #btn-volver-canje { margin: 16px 0 0; }
+
+/* ---------- Éxito: mensaje grande con el premio y divisor ---------- */
+#exito .exito {
+  margin: 8px 0 14px; padding: 26px 18px 22px; overflow-wrap: anywhere;
+  background: var(--superficie); border: 1px solid var(--borde); border-color: color-mix(in srgb, var(--naranja) 55%, transparent);
+  border-radius: 18px; box-shadow: var(--sombra-card);
+  font-size: clamp(1.9rem, 9vw, 2.6rem); line-height: 1.1; color: var(--hielo);
+}
+#exito .exito::before { width: 84px; height: 84px; margin: 0 auto 12px; }
+#exito .divisor { margin: 4px 0 18px; }
+#exito #btn-nuevo { margin: 0; }
+
+/* ---------- Escritorio: columna centrada y textos mayores ---------- */
+@media (min-width: 600px) {
+  .acciones { gap: 18px; }
+}
+@media (min-width: 640px) {
+  body.caja main > section { justify-content: center; }
+  .caja-logo { width: 80px; height: 80px; }
+  .caja-info h1 { font-size: 1.7rem; }
+  .acciones .btn { min-height: 104px; }
+  .acciones .btn-titulo { font-size: 1.45rem; }
+  .acciones #btn-venta .btn-titulo { font-size: 1.75rem; }
+  #venta h1 { font-size: 2rem; }
+  #venta .cuenta { font-size: 2.6rem; }
+}
+
+/* ---------- Menos movimiento: sin transiciones ni giros decorativos; la barra de tiempo sí avanza ---------- */
+@media (prefers-reduced-motion: reduce) {
+  body.caja .btn { transition: none; }
+  body.caja .acciones .btn:active { transform: none; }
+  body.caja .exito::before, body.caja .logo-halo::after { animation: none; }
+}
+
+/* ---------- Adaptación a pantallas bajas y teléfono en horizontal ---------- */
+@media (max-height: 600px) {
+  .caja-cab { gap: 10px; }
+  .caja-logo { width: 52px; height: 52px; }
+  .acciones { gap: 10px; }
+  .acciones #btn-venta, .acciones #btn-control { min-height: 84px; }
+  .acciones #btn-venta-q, .acciones #btn-canje { min-height: 108px; padding-top: 66px; }
+  .acciones #btn-panel { min-height: 72px; }
+  .acciones .btn-titulo { font-size: 1.15rem; }
+  .acciones #btn-venta .btn-titulo, .acciones #btn-control .btn-titulo { font-size: 1.35rem; }
+  .acciones .btn-sub { font-size: .76rem; }
+  #venta .qr-caja { max-width: min(62vw, 40dvh); }
+}
+@media (max-height: 480px) and (orientation: landscape) {
+  body.caja main { max-width: 760px; }
+  .acciones { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .acciones #btn-venta, .acciones #btn-control { grid-column: 1 / -1; min-height: 64px; }
+  .acciones #btn-panel, .acciones #btn-venta-q.oculto ~ #btn-canje { grid-column: auto; }
+  .acciones #btn-venta-q, .acciones #btn-canje, .acciones #btn-panel { min-height: 96px; padding-top: 14px; justify-content: flex-end; }
+  .acciones #btn-venta-q::before, .acciones #btn-canje::before, .acciones #btn-panel::before, .acciones #btn-venta-q::after, .acciones #btn-canje::after, .acciones #btn-panel::after { display: none; }
+  .acciones .emoji, .acciones .logo-q { display: none; }
+  #venta .qr-caja { max-width: min(36vw, 62dvh); }
+}

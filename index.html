@@ -1,25 +1,36 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" data-marca="tlatolli">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <title>Lealtad Quetzalitos</title>
+  <title>Fidelización Tlatolli</title>
   <link rel="icon" type="image/png" href="img/icono.png">
   <link rel="apple-touch-icon" href="img/icono.png">
-  <link rel="stylesheet" href="fonts/fonts.css">
-  <link rel="stylesheet" href="estilo.css">
+  <link rel="stylesheet" href="fonts/fonts.css?v=10">
+  <link rel="stylesheet" href="estilo.css?v=10">
+  <link rel="stylesheet" href="inicio.css?v=10">
 </head>
 <body>
-<main>
-  <header class="cabecera"><div class="greca"></div></header>
-  <div class="logo-halo"><img src="img/logo.png" alt="Quetzalitos" width="476" height="478"></div>
-  <h1>Lealtad Quetzalitos</h1>
-  <p>Tarjeta de sellos: a los 6 postres, el 7.º va por la casa.</p>
-  <a class="btn btn-oro" href="caja/">Caja</a>
-  <a class="btn btn-claro" href="panel/">Panel</a>
-  <p class="letra-chica">Si eres cliente, escanea el QR que te muestran en caja al comprar tu postre.</p>
-  <footer class="pie"><div class="greca"></div></footer>
+<main class="inicio">
+  <header class="cabecera"><div class="greca" aria-hidden="true"></div></header>
+  <div class="marco-logo">
+    <img src="img/tlatolli.jpg" srcset="img/tlatolli-chico.jpg 320w, img/tlatolli.jpg 900w" sizes="(max-width: 420px) 86vw, 360px" width="900" height="598" alt="Tlatolli">
+  </div>
+  <h1>Fidelización Tlatolli</h1>
+  <div class="divisor" aria-hidden="true"><i></i></div>
+  <p class="subtitulo" id="subtitulo">Ingresa el código de tu negocio</p>
+  <form id="form-codigo" aria-describedby="subtitulo">
+    <label for="codigo" class="sr-only">Código de tu negocio</label>
+    <input id="codigo" class="campo" type="password" inputmode="numeric" autocomplete="off">
+    <button id="btn-entrar" class="btn btn-oro" type="submit">Entrar</button>
+  </form>
+  <div class="mensaje-zona"><p id="msg" aria-live="polite" class="oculto"></p></div>
+  <a id="ver-tarjeta" class="btn btn-claro oculto" href="c/">Ver mi tarjeta</a>
+  <footer class="pie"><p class="firma">Desarrollado por <span class="firma-marca">OLLIN</span></p><div class="greca" aria-hidden="true"></div></footer>
 </main>
+<script src="config.js?v=10"></script>
+<script src="lib.js?v=10"></script>
+<script src="inicio.js?v=10"></script>
 </body>
 </html>

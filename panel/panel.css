@@ -1,35 +1,217 @@
-main { max-width: 920px; }
-/* Tabla del panel: cristal oscuro con borde degradado, encabezado verde y fila total en rosa mexicano. */
-.panel-tabla {
-  overflow-x: auto; margin: 18px 0 8px; border-radius: 18px;
-  background: linear-gradient(rgba(4, 23, 15, .88), rgba(4, 23, 15, .88)) padding-box, linear-gradient(135deg, var(--rosa-neon), var(--naranja) 38%, var(--esmeralda) 68%, var(--azul-neon)) border-box;
-  border: 2px solid transparent; box-shadow: 0 0 44px -12px rgba(228, 0, 124, .50), 0 0 60px -16px rgba(76, 141, 255, .45);
+/* ---------- Panel de control · marca Tlatolli ----------
+   Paleta y componentes vienen de estilo.css (<html data-marca="tlatolli">). Aquí solo ajustes del panel.
+   Los valores de marca que la tarjeta neón de Quetzalitos NO debe heredar se fijan en :root (se resuelven aquí, antes de que la tarjeta los sobrescriba). */
+:root {
+  --crema-marca: var(--hielo);
+  --oro-marca: var(--naranja);
+  --oro-claro-marca: var(--naranja-claro);
+  --peligro-texto: color-mix(in srgb, var(--alerta), #FFFFFF 40%);
 }
-.panel-tabla table { width: 100%; min-width: 640px; border-collapse: collapse; font-family: var(--sans); color: var(--hielo); }
-.panel-tabla th {
-  padding: 14px 12px; text-align: left; white-space: nowrap;
-  background: linear-gradient(90deg, var(--azul-osc), var(--azul)); color: #FFFFFF; font-weight: 700;
-  font-size: .76rem; letter-spacing: .12em; text-transform: uppercase;
+
+main { max-width: 720px; }
+
+/* ---------- Encabezado: logo de Tlatolli redondeado con filete dorado ---------- */
+.inicio { display: flex; flex-direction: column; align-items: center; width: 100%; margin: auto 0; text-align: center; }
+body.con-nav .inicio { margin: 0; }
+.marca {
+  display: block; flex: none; width: 92px; height: 92px; margin: 4px auto 0; padding: 3px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--oro-claro-marca), var(--oro-marca) 52%, var(--naranja-osc));
+  box-shadow: 0 12px 26px -12px rgba(0, 0, 0, .7);
 }
-.panel-tabla td { padding: 13px 12px; text-align: left; white-space: nowrap; border-bottom: 1px solid rgba(141, 240, 192, .16); }
-.panel-tabla tbody tr:nth-child(even) { background: rgba(76, 141, 255, .10); }
-.panel-tabla th:nth-child(n+3), .panel-tabla td:nth-child(n+3) { text-align: right; font-variant-numeric: tabular-nums; }
-/* Alta de cafetería */
-#nueva { margin: 30px 0 8px; }
-#nueva h2 { margin: 0 0 14px; }
-.campo-texto { min-height: 58px; padding: 8px 16px; font-size: 1.15rem; font-weight: 600; letter-spacing: 0; text-align: left; }
-.fila-pin { display: flex; align-items: flex-start; gap: 12px; }
-.fila-pin .campo { flex: 1; min-width: 0; font-size: 1.6rem; }
-.fila-pin .btn { flex: none; min-height: 68px; }
-#eliminar { margin: 34px 0 8px; }
-#eliminar h2 { margin: 0 0 8px; }
+.marca img { display: block; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+.inicio h1 { font-size: 2rem; margin: 10px 0 6px; }
+.inicio .divisor { width: 100%; max-width: 300px; margin: 6px 0 16px; }
+body.con-nav .marca { width: 56px; height: 56px; margin: 0 auto 2px; }
+body.con-nav .inicio h1 { font-size: 1.5rem; margin: 0 0 4px; }
+body.con-nav .inicio .divisor { margin: 4px 0 10px; }
+#form-clave { width: 100%; max-width: 340px; text-align: left; }
+#error { width: 100%; max-width: 340px; margin: 14px 0 0; }
+body.con-nav #error { max-width: none; }
+
+/* ---------- Etiquetas, campos y botones ---------- */
+label { display: block; margin: 0 0 6px; color: var(--menta); font-size: .9rem; font-weight: 600; letter-spacing: .01em; text-transform: none; }
+.campo, .campo-texto {
+  min-height: 50px; margin-bottom: 14px; padding: 10px 14px; font-size: 1rem; font-weight: 600; letter-spacing: .01em;
+  text-align: left; border-radius: 14px;
+}
+select.campo { font-size: 1rem; letter-spacing: .01em; }
+.campo:focus { border-color: var(--naranja); box-shadow: inset 0 3px 10px rgba(0, 0, 0, .35), 0 0 0 3px color-mix(in srgb, var(--naranja) 45%, transparent); }
+.btn:not(.btn-chico) { min-height: 52px; margin: 6px 0 0; font-size: 1rem; border-radius: 16px; }
+.btn-chico { min-height: 48px; font-size: .95rem; }
+.btn:focus-visible, .campo:focus-visible, .nav-item:focus-visible { outline: 2px solid var(--naranja); outline-offset: 3px; }
+
+/* Jerarquía: primario = .btn-oro (terracota); secundario fantasma; peligro = contorno rojo suave */
+.btn-fantasma {
+  background: transparent; color: var(--hielo); backdrop-filter: none;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--naranja) 60%, transparent);
+}
+.btn-fantasma:hover { background: color-mix(in srgb, var(--naranja) 12%, transparent); filter: none; }
+.btn-peligro {
+  background: transparent; color: var(--peligro-texto); backdrop-filter: none;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--alerta) 70%, transparent);
+}
+.btn-peligro:hover { background: color-mix(in srgb, var(--alerta) 14%, transparent); filter: none; }
+.btn-peligro.relleno { background: var(--alerta); color: var(--hielo); box-shadow: none; }
+.btn-peligro.relleno:hover { background: color-mix(in srgb, var(--alerta), #000000 12%); }
+
+.fila-pin { display: flex; align-items: stretch; gap: 10px; }
+.fila-pin .campo { flex: 1; min-width: 0; font-size: 1.1rem; letter-spacing: .2em; text-align: center; }
+.fila-pin .btn { flex: none; width: auto; min-width: 112px; min-height: 50px; margin: 0 0 14px; }
+.fila-casilla { display: flex; align-items: center; gap: 12px; min-height: 48px; margin: 0 0 6px; }
+.fila-casilla input[type="checkbox"] { flex: none; width: 24px; height: 24px; margin: 0; accent-color: var(--naranja); }
+.casilla { display: block; flex: 1; min-width: 0; margin: 0; padding: 8px 0; color: var(--hielo); font-size: .95rem; font-weight: 500; letter-spacing: 0; text-transform: none; cursor: pointer; }
+#form-nueva .btn, #form-editar .btn, #form-quetzalitos .btn { margin-top: 8px; }
+#form-eliminar .btn { margin-top: 4px; }
+
+/* ---------- Secciones ---------- */
+#metricas, #nueva, #editar, #quetzalitos { width: 100%; margin: 8px 0 0; }
+#metricas h2, #nueva h2, #editar h2, #quetzalitos h2 { font-size: 1.7rem; margin: 0; }
+#metricas .divisor, #nueva .divisor, #editar .divisor, #quetzalitos .divisor { margin: 10px 0 18px; }
+.nota-seccion { margin: 0 0 16px; text-align: left; font-size: .88rem; }
 #e-confirmar .fila { margin-top: 12px; }
 #e-confirmar p { margin: 0; }
-#n-ok strong, #m-ok strong { font-size: 1.4em; letter-spacing: .12em; color: var(--naranja-claro); font-variant-numeric: tabular-nums; }
-/* Edición de cafetería */
-#editar { margin: 34px 0 8px; }
-#editar h2 { margin: 0 0 8px; }
-.fila-casilla { display: flex; align-items: center; gap: 12px; min-height: 44px; margin: 4px 0 16px; }
-.fila-casilla input[type="checkbox"] { flex: none; width: 28px; height: 28px; margin: 0; accent-color: var(--esmeralda); }
-.casilla { display: block; flex: 1; min-width: 0; margin: 0; padding: 8px 0; color: var(--hielo); font-size: 1.05rem; font-weight: 600; letter-spacing: 0; text-transform: none; cursor: pointer; }
-.panel-tabla .total td { background: linear-gradient(90deg, var(--rosa-osc), var(--rosa)); color: #FFFFFF; font-weight: 700; border-bottom: 0; }
+
+/* Métricas: periodo + Actualizar */
+.fila-periodo { display: flex; gap: 10px; align-items: stretch; }
+.fila-periodo .campo { flex: 1; min-width: 0; margin-bottom: 0; }
+.fila-periodo .btn { flex: none; width: auto; min-width: 0; min-height: 50px; margin: 0; padding: 0 16px; }
+#metricas .aviso { margin: 8px 0; font-size: .88rem; }
+
+/* ---------- Tabla: encabezado jade profundo, filas con filete, Total en terracota, primera columna fija ---------- */
+.panel-tabla {
+  overflow-x: auto; margin: 10px 0 6px; border-radius: 18px; border: 1px solid var(--borde);
+  background: color-mix(in srgb, var(--noche) 72%, transparent); box-shadow: var(--sombra-card);
+  -webkit-overflow-scrolling: touch;
+}
+.panel-tabla table { width: 100%; min-width: 600px; border-collapse: separate; border-spacing: 0; font-family: var(--sans); font-size: .9rem; color: var(--hielo); }
+.panel-tabla th {
+  padding: 12px 10px; text-align: left; white-space: nowrap; font-weight: 600; font-size: .8rem; letter-spacing: .02em;
+  background: var(--jade-osc); color: var(--hielo);
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--naranja) 60%, transparent);
+}
+.panel-tabla td { padding: 11px 10px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--borde); }
+.panel-tabla tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--hielo) 4%, transparent); }
+.panel-tabla th:nth-child(n+3), .panel-tabla td:nth-child(n+3) { text-align: right; font-variant-numeric: tabular-nums; }
+.panel-tabla th:first-child, .panel-tabla td:first-child {
+  position: sticky; left: 0; z-index: 1; box-shadow: 6px 0 8px -6px rgba(0, 0, 0, .6);
+}
+.panel-tabla th:first-child { background: var(--jade-osc); }
+.panel-tabla td:first-child { background: var(--selva); }
+.panel-tabla tbody tr:nth-child(even) td:first-child { background: var(--selva-2); }
+.panel-tabla .total td { background: var(--rosa); color: var(--hielo); font-weight: 700; border-bottom: 0; }
+.panel-tabla .total td:first-child { background: var(--rosa-osc); }
+
+/* ---------- Nueva / Editar: zona de peligro ---------- */
+.letra-chica { margin: 0; }
+.zona-peligro {
+  margin-top: 28px; padding: 18px 16px 16px; border-radius: 18px;
+  border: 1px solid color-mix(in srgb, var(--alerta) 55%, transparent);
+  background: color-mix(in srgb, var(--alerta) 8%, transparent);
+}
+.zona-peligro h3 { font-family: var(--serif); font-weight: 400; font-size: 1.35rem; margin: 0 0 6px; color: var(--peligro-texto); }
+.zona-peligro .nota-zona { margin: 0 0 14px; text-align: left; font-size: .88rem; color: var(--niebla); }
+.zona-peligro .aviso { background: color-mix(in srgb, var(--alerta) 22%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--alerta) 60%, transparent); }
+.zona-peligro .aviso::before { background: var(--alerta); }
+
+/* ---------- Quetzalitos: vista previa + formulario ---------- */
+.vista-superficie {
+  margin: 0 0 20px; padding: 14px; border-radius: 22px; border: 1px solid var(--borde);
+  background: color-mix(in srgb, var(--noche) 78%, transparent); box-shadow: var(--sombra-card);
+}
+.vista-rotulo { margin: 0 0 10px; text-align: center; color: var(--naranja); font-size: .8rem; font-weight: 600; letter-spacing: .02em; }
+
+/* Tarjeta del cliente: conserva su diseño «selva neón». Estos tokens devuelven su paleta dentro de la tarjeta. */
+.tarjeta-vista {
+  --noche: #04170F; --selva: #0A2E22; --selva-2: #0F4030; --jade: #137A5B; --jade-osc: #0E5E46;
+  --esmeralda: #1FB67A; --menta: #8DF0C0; --lima: #C6FF7A; --hielo: #F1FFF8; --niebla: #A8D6C2;
+  --rosa: #E4007C; --rosa-osc: #B80066; --rosa-neon: #FF4DAA; --rosa-claro: #FFB3DB;
+  --naranja: #FF8A1F; --naranja-osc: #E8590C; --naranja-claro: #FFC48A;
+  --azul: #1F5BD6; --azul-osc: #14409E; --azul-neon: #4C8DFF; --azul-claro: #B3D0FF; --azul-med: #2F6BE6;
+  display: flex; flex-direction: column; align-items: center; padding: 22px 16px 18px; text-align: center; color: var(--hielo);
+  border-radius: 20px; background: linear-gradient(165deg, rgba(15, 64, 48, .97) 0%, rgba(6, 36, 27, .97) 100%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--naranja) 55%, transparent), 0 0 30px -12px rgba(255, 77, 170, .45);
+}
+.medallon {
+  display: grid; place-items: center; width: 84px; height: 84px; margin: 0 auto 8px; border-radius: 50%; border: 3px solid transparent;
+  background:
+    radial-gradient(circle at 50% 36%, var(--crema-marca) 0%, color-mix(in srgb, var(--crema-marca) 86%, var(--oro-marca)) 100%) padding-box,
+    linear-gradient(135deg, var(--oro-claro-marca), var(--oro-marca) 55%, var(--naranja-osc)) border-box;
+  box-shadow: 0 6px 18px -6px rgba(0, 0, 0, .6);
+}
+.medallon img { display: block; width: 72%; height: 72%; object-fit: contain; }
+.titulo-tarjeta { margin: 0 0 12px; font-family: var(--serif); font-weight: 400; font-size: 1.7rem; line-height: 1; color: var(--hielo); }
+.tarjeta-vista .sellos { width: 100%; gap: 14px; margin: 0 0 12px; }
+.texto-tarjeta { margin: 0; font-size: .9rem; color: var(--niebla); }
+
+/* Formulario: 2 columnas cuando hay ancho */
+.rejilla-2 { display: grid; grid-template-columns: 1fr; column-gap: 14px; }
+.rejilla-2 .campo { margin-bottom: 14px; }
+@media (min-width: 560px) { .rejilla-2 { grid-template-columns: 1fr 1fr; } }
+
+/* Reserva el alto del aviso: al mostrarlo o ocultarlo no se mueve el formulario */
+.reserva-aviso { min-height: 60px; }
+.reserva-aviso .aviso, .reserva-aviso .error { margin: 0 0 8px; }
+.nota-pie { margin: 6px 0 0; text-align: center; font-size: .8rem; }
+
+/* ---------- Métricas: ajustes menores de aviso ---------- */
+.aviso strong { font-size: 1.15em; letter-spacing: .12em; }
+
+/* ---------- Menú flotante: cinco botones que caben a 320 px ---------- */
+.nav-flotante {
+  gap: 6px; padding: 6px; width: min(calc(100% - 24px), 560px); border-radius: 26px;
+  background: color-mix(in srgb, var(--noche) 90%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--naranja) 45%, transparent), 0 18px 40px -12px rgba(0, 0, 0, .7);
+}
+.nav-item { flex: 1 1 auto; min-width: 0; min-height: 58px; padding: 6px 2px; font-size: .74rem; }
+.nav-item:focus-visible { outline-offset: 2px; }
+@media (max-width: 360px) {
+  .nav-flotante { gap: 4px; padding: 5px; }
+  .nav-item { font-size: .64rem; padding: 6px 0; }
+  .nav-ico { width: 20px; height: 20px; }
+}
+
+/* ---------- Escritorio: contenido centrado, máx. 720 px ---------- */
+@media (min-width: 900px) {
+  main { padding-top: 32px; }
+  .inicio h1 { font-size: 2.4rem; }
+  #form-clave { max-width: 380px; }
+  #metricas h2, #nueva h2, #editar h2, #quetzalitos h2 { font-size: 2rem; }
+  .campo, .campo-texto { font-size: 1.05rem; }
+  .btn:not(.btn-chico) { font-size: 1.05rem; }
+}
+
+/* ---------- Movimiento reducido ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important; animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important; scroll-behavior: auto !important;
+  }
+}
+
+/* Ajustes tras revisión: el logo de Tlatolli es rectangular (no se recorta en círculo) y la vista previa de Quetzalitos ocupa menos alto. */
+.marca { width: 132px; height: auto; border-radius: 12px; overflow: hidden; box-shadow: 0 0 0 1.5px var(--naranja), 0 8px 22px -10px rgba(0, 0, 0, .7); }
+.marca img { height: auto; border-radius: 0; object-fit: contain; }
+body.con-nav .marca { width: 92px; height: auto; margin: 0 auto 4px; }
+.tarjeta-vista { padding: 16px 14px 14px; }
+.tarjeta-vista .medallon { width: 64px; height: 64px; margin-bottom: 6px; }
+.tarjeta-vista .titulo-tarjeta { font-size: 1.45rem; margin-bottom: 8px; }
+.tarjeta-vista .sellos { gap: 10px; }
+.tarjeta-vista .sellos:not(.cinco) .sello:not(.premio) { max-width: 58px; }
+.tarjeta-vista .sellos .sello.premio { max-width: none; min-height: 58px; font-size: 1.2rem; }
+
+/* ---------- Adaptación a pantallas bajas y teléfono en horizontal ---------- */
+@media (max-height: 640px) {
+  body.con-nav .marca { width: 64px; margin-bottom: 2px; }
+  body.con-nav h1 { font-size: 1.35rem; margin: 2px 0 6px; }
+  body.con-nav .divisor { margin: 6px 0; }
+  .tarjeta-vista .medallon { width: 48px; height: 48px; }
+  .tarjeta-vista .sellos:not(.cinco) .sello:not(.premio) { max-width: 44px; }
+}
+@media (max-height: 480px) and (orientation: landscape) {
+  body.con-nav .marca { display: none; }
+  body.con-nav main { max-width: 760px; }
+}
+@media (max-height: 600px) {
+  body.con-nav .marca { display: none; }
+  body.con-nav .divisor:first-of-type { display: none; }
+}

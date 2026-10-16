@@ -18,6 +18,23 @@ create table if not exists cafeterias (
   tope_hora int not null default 30
 );
 
+-- Personalización por negocio: tipo («Cafetería», «Bar»…) y logo (ruta relativa a la raíz del sitio, p. ej. img/negocios/burra-blanca.png, o URL https).
+alter table cafeterias add column if not exists tipo text not null default 'Cafetería';
+alter table cafeterias add column if not exists logo text;
+-- Programa de lealtad propio del negocio, editable por él (guardar_config): color de acento, meta, premio, palabra para lo que se junta y mensaje.
+alter table cafeterias add column if not exists color text;
+alter table cafeterias add column if not exists meta int not null default 6;
+alter table cafeterias add column if not exists premio text not null default 'Premio de la casa';
+alter table cafeterias add column if not exists unidad text not null default 'sellos';
+alter table cafeterias add column if not exists mensaje text;
+-- «Control Quetzalitos»: cuenta cuyo menú solo lleva al panel de super administrador (que sigue pidiendo la clave admin).
+-- Tema visual de las pantallas del negocio (colores, tipografías, emojis, imagen de fondo); lo valida guardar_tema.
+alter table cafeterias add column if not exists tema jsonb;
+alter table cafeterias add column if not exists super_admin boolean not null default false;
+-- Distribuidor de Quetzalitos: las cafeterías que ya existían lo eran, así que nacen en true; las nuevas, en false (el default cambia después).
+alter table cafeterias add column if not exists distribuidor boolean not null default true;
+alter table cafeterias alter column distribuidor set default false;
+
 create table if not exists tarjetas (
   id uuid primary key default gen_random_uuid(),
   creada_en timestamptz not null default now()
@@ -60,6 +77,15 @@ create table if not exists fallos_pin (
   creado_en timestamptz not null default now()
 );
 
+-- Programa: 'q' = Quetzalitos (compartido); cualquier otro valor = id de la cafetería dueña de su programa propio.
+alter table tokens add column if not exists programa text not null default 'q';
+-- Venta cancelada por la caja: el QR deja de servir y no cuenta como venta ni en el tope por hora.
+alter table tokens add column if not exists cancelado_en timestamptz;
+alter table sellos add column if not exists programa text not null default 'q';
+alter table canjes add column if not exists programa text not null default 'q';
+-- Meta con la que se pidió el premio (null en canjes viejos = meta del programa); así cambiar la meta no altera el saldo ya calculado.
+alter table canjes add column if not exists meta int;
+
 create index if not exists tokens_cafeteria_creado_idx on tokens (cafeteria_id, creado_en);
 create index if not exists sellos_tarjeta_cafeteria_creado_idx on sellos (tarjeta_id, cafeteria_id, creado_en);
 create index if not exists canjes_codigo_creado_idx on canjes (codigo, creado_en);
@@ -82,10 +108,18 @@ insert into config (clave, valor) values ('meta', '6') on conflict do nothing;
 
 -- Auxiliares internas (sin grant a anon/authenticated) ------------------------
 
-create or replace function _meta() returns int
+drop function if exists _meta();
+drop function if exists _saldo(uuid);
+drop function if exists crear_venta(text);
+drop function if exists tarjeta(uuid);
+drop function if exists pedir_canje(uuid);
+
+create or replace function _meta(p_programa text default 'q') returns int
 language sql security definer set search_path = public, extensions, pg_temp
 as $$
-  select greatest(coalesce((select valor::int from config where clave = 'meta'), 6), 1)
+  select greatest(coalesce(
+    case when p_programa = 'q' then (select valor::int from config where clave = 'meta')
+         else (select c.meta from cafeterias c where c.id::text = p_programa) end, 6), 1)
 $$;
 
 -- ponytail: bloqueo global, no por IP (la función no ve la IP del cliente). Un atacante puede bloquear a todo el personal de caja 10 min.
@@ -118,12 +152,29 @@ as $$
   select m.* from m where (select count(*) from m) = 1
 $$;
 
-create or replace function _saldo(p_tarjeta uuid) returns int
+create or replace function _saldo(p_tarjeta uuid, p_programa text default 'q') returns int
 language sql security definer set search_path = public, extensions, pg_temp
 as $$
-  select ((select count(*) from sellos s where s.tarjeta_id = p_tarjeta)
-          - _meta() * (select count(*) from canjes k
-                       where k.tarjeta_id = p_tarjeta and k.usado_en is not null))::int
+  select ((select count(*) from sellos s where s.tarjeta_id = p_tarjeta and s.programa = p_programa)
+          - (select coalesce(sum(coalesce(k.meta, _meta(p_programa))), 0) from canjes k
+             where k.tarjeta_id = p_tarjeta and k.programa = p_programa and k.usado_en is not null))::int
+$$;
+
+-- Datos para pintar la tarjeta de un programa; null si el programa no existe.
+create or replace function _config_programa(p_programa text) returns json
+language sql security definer set search_path = public, extensions, pg_temp
+as $$
+  select case when p_programa = 'q' then
+    json_build_object('programa', 'q', 'nombre', 'Quetzalitos', 'tipo', null, 'logo', null, 'color', null,
+                      'meta', _meta('q'),
+                      'premio', coalesce((select valor from config where clave = 'q_premio'), 'Un postre gratis'),
+                      'unidad', coalesce((select valor from config where clave = 'q_unidad'), 'sellos'),
+                      'mensaje', (select valor from config where clave = 'q_mensaje'))
+  else
+    (select json_build_object('programa', c.id::text, 'nombre', c.nombre, 'tipo', c.tipo, 'logo', c.logo, 'color', c.color,
+                              'meta', greatest(c.meta, 1), 'premio', c.premio, 'unidad', c.unidad, 'mensaje', c.mensaje)
+     from cafeterias c where c.id::text = p_programa)
+  end
 $$;
 
 create or replace function _codigo_canje() returns text
@@ -133,6 +184,8 @@ declare
   v_bytes bytea;
   v_codigo text;
 begin
+  -- Un solo generador a la vez: sin esto, dos canjes simultáneos de tarjetas distintas podían recibir el mismo código.
+  perform pg_advisory_xact_lock(hashtext('quetzalito.canje'));
   loop
     v_bytes := extensions.gen_random_bytes(4);
     v_codigo := lpad((((get_byte(v_bytes, 0)::bigint * 16777216)
@@ -164,11 +217,16 @@ begin
     perform _registrar_fallo();
     return json_build_object('ok', false, 'error', 'pin_invalido');
   end if;
-  return json_build_object('ok', true, 'cafeteria', v_cafe.nombre, 'escuela', v_cafe.escuela);
+  return json_build_object('ok', true, 'cafeteria', v_cafe.nombre, 'escuela', v_cafe.escuela,
+                           'tipo', v_cafe.tipo, 'logo', v_cafe.logo, 'color', v_cafe.color,
+                           'meta', greatest(v_cafe.meta, 1), 'premio', v_cafe.premio, 'unidad', v_cafe.unidad,
+                           'mensaje', v_cafe.mensaje, 'distribuidor', v_cafe.distribuidor, 'admin', v_cafe.super_admin,
+                           'tema', v_cafe.tema);
 end
 $$;
 
-create or replace function crear_venta(p_pin text) returns json
+-- p_quetzalitos = true genera el QR del programa Quetzalitos (solo distribuidores); si no, el del programa propio del negocio.
+create or replace function crear_venta(p_pin text, p_quetzalitos boolean default false) returns json
 language plpgsql security definer set search_path = public, extensions, pg_temp
 as $$
 declare
@@ -176,28 +234,65 @@ declare
   v_codigo text;
   v_expira timestamptz;
   v_ultima_hora int;
+  v_prog text;
 begin
   if _bloqueado() then
     return json_build_object('ok', false, 'error', 'bloqueado');
   end if;
   v_cafe := _cafeteria_por_pin(p_pin);
-  if v_cafe.id is null then
+  -- La cuenta de control solo entra (entrar) y va al panel de super admin: no vende, canjea ni edita tarjetas.
+  if v_cafe.id is null or v_cafe.super_admin then
     perform _registrar_fallo();
     return json_build_object('ok', false, 'error', 'pin_invalido');
   end if;
+  if coalesce(p_quetzalitos, false) and not v_cafe.distribuidor then
+    return json_build_object('ok', false, 'error', 'no_distribuidor');
+  end if;
+  v_prog := case when coalesce(p_quetzalitos, false) then 'q' else v_cafe.id::text end;
 
   select count(*) into v_ultima_hora from tokens t
-  where t.cafeteria_id = v_cafe.id and t.creado_en > now() - interval '1 hour';
+  where t.cafeteria_id = v_cafe.id and t.cancelado_en is null and t.creado_en > now() - interval '1 hour';
   if v_ultima_hora >= v_cafe.tope_hora then
     return json_build_object('ok', false, 'error', 'tope_hora');
   end if;
 
   v_codigo := encode(extensions.gen_random_bytes(6), 'hex');
-  insert into tokens (cafeteria_id, codigo, creado_en, expira_en)
-  values (v_cafe.id, v_codigo, now(), now() + interval '5 minutes')
+  insert into tokens (cafeteria_id, codigo, creado_en, expira_en, programa)
+  values (v_cafe.id, v_codigo, now(), now() + interval '5 minutes', v_prog)
   returning expira_en into v_expira;
 
-  return json_build_object('ok', true, 'codigo', v_codigo, 'expira_en', v_expira, 'cafeteria', v_cafe.nombre);
+  return json_build_object('ok', true, 'codigo', v_codigo, 'expira_en', v_expira,
+                           'cafeteria', v_cafe.nombre, 'programa', v_prog);
+end
+$$;
+
+-- La caja anula un QR que aún nadie escaneó (error al cobrar, cliente que se arrepiente). Solo el negocio que lo generó.
+create or replace function cancelar_venta(p_pin text, p_codigo text) returns json
+language plpgsql security definer set search_path = public, extensions, pg_temp
+as $$
+declare
+  v_cafe cafeterias;
+  v_tok tokens;
+begin
+  if _bloqueado() then
+    return json_build_object('ok', false, 'error', 'bloqueado');
+  end if;
+  v_cafe := _cafeteria_por_pin(p_pin);
+  if v_cafe.id is null or v_cafe.super_admin then
+    perform _registrar_fallo();
+    return json_build_object('ok', false, 'error', 'pin_invalido');
+  end if;
+  select * into v_tok from tokens where codigo = p_codigo and cafeteria_id = v_cafe.id for update;
+  if not found then
+    return json_build_object('ok', false, 'error', 'token_invalido');
+  end if;
+  if v_tok.usado_en is not null then
+    return json_build_object('ok', false, 'error', 'token_usado');
+  end if;
+  if v_tok.cancelado_en is null then
+    update tokens set cancelado_en = now() where id = v_tok.id;
+  end if;
+  return json_build_object('ok', true);
 end
 $$;
 
@@ -210,13 +305,14 @@ declare
   v_nueva boolean := false;
   v_repetido boolean := false;
   v_saldo int;
-  v_meta int := _meta();
+  v_meta int;
   v_nombre text;
 begin
   select * into v_tok from tokens where codigo = p_codigo for update;
   if not found then
     return json_build_object('ok', false, 'error', 'token_invalido');
   end if;
+  v_meta := _meta(v_tok.programa);
 
   if v_tok.usado_en is not null then
     if p_tarjeta is null or v_tok.tarjeta_id is distinct from p_tarjeta then
@@ -225,6 +321,9 @@ begin
     v_repetido := true;
     v_tarj := v_tok.tarjeta_id;
   else
+    if v_tok.cancelado_en is not null then
+      return json_build_object('ok', false, 'error', 'token_cancelado');
+    end if;
     if v_tok.expira_en <= now() then
       return json_build_object('ok', false, 'error', 'token_vencido');
     end if;
@@ -243,71 +342,77 @@ begin
       end if;
     end if;
 
+    -- El enfriamiento de 10 min es por programa: se puede sellar el propio y el de Quetzalitos seguidos.
     if exists (
       select 1 from sellos s
-      where s.tarjeta_id = v_tarj and s.cafeteria_id = v_tok.cafeteria_id
+      where s.tarjeta_id = v_tarj and s.cafeteria_id = v_tok.cafeteria_id and s.programa = v_tok.programa
         and s.creado_en > now() - interval '10 minutes') then
       return json_build_object('ok', false, 'error', 'sello_reciente');
     end if;
 
-    insert into sellos (tarjeta_id, cafeteria_id, token_id, creado_en)
-    values (v_tarj, v_tok.cafeteria_id, v_tok.id, now());
+    insert into sellos (tarjeta_id, cafeteria_id, token_id, creado_en, programa)
+    values (v_tarj, v_tok.cafeteria_id, v_tok.id, now(), v_tok.programa);
     update tokens set usado_en = now(), tarjeta_id = v_tarj where id = v_tok.id;
   end if;
 
-  v_saldo := _saldo(v_tarj);
+  v_saldo := _saldo(v_tarj, v_tok.programa);
   select nombre into v_nombre from cafeterias where id = v_tok.cafeteria_id;
   return json_build_object(
     'ok', true, 'tarjeta_id', v_tarj, 'sellos', v_saldo, 'meta', v_meta,
     'premio_listo', v_saldo >= v_meta, 'cafeteria', v_nombre,
-    'nueva', v_nueva, 'repetido', v_repetido);
+    'nueva', v_nueva, 'repetido', v_repetido,
+    'programa', v_tok.programa, 'config', _config_programa(v_tok.programa));
 end
 $$;
 
-create or replace function tarjeta(p_tarjeta uuid) returns json
+create or replace function tarjeta(p_tarjeta uuid, p_programa text default 'q') returns json
 language plpgsql security definer set search_path = public, extensions, pg_temp
 as $$
 declare
-  v_meta int := _meta();
+  v_config json := _config_programa(coalesce(p_programa, 'q'));
+  v_meta int := _meta(coalesce(p_programa, 'q'));
   v_saldo int;
 begin
   perform 1 from tarjetas where id = p_tarjeta;
-  if not found then
+  if not found or v_config is null then
     return json_build_object('ok', false, 'error', 'tarjeta_invalida');
   end if;
-  v_saldo := _saldo(p_tarjeta);
+  v_saldo := _saldo(p_tarjeta, coalesce(p_programa, 'q'));
   return json_build_object('ok', true, 'tarjeta_id', p_tarjeta, 'sellos', v_saldo,
-                           'meta', v_meta, 'premio_listo', v_saldo >= v_meta);
+                           'meta', v_meta, 'premio_listo', v_saldo >= v_meta,
+                           'programa', coalesce(p_programa, 'q'), 'config', v_config);
 end
 $$;
 
-create or replace function pedir_canje(p_tarjeta uuid) returns json
+create or replace function pedir_canje(p_tarjeta uuid, p_programa text default 'q') returns json
 language plpgsql security definer set search_path = public, extensions, pg_temp
 as $$
 declare
-  v_meta int := _meta();
+  v_prog text := coalesce(p_programa, 'q');
+  v_meta int := _meta(coalesce(p_programa, 'q'));
   v_codigo text;
   v_creado timestamptz;
 begin
   perform 1 from tarjetas where id = p_tarjeta for update;
-  if not found then
+  if not found or _config_programa(v_prog) is null then
     return json_build_object('ok', false, 'error', 'tarjeta_invalida');
   end if;
-  if _saldo(p_tarjeta) < v_meta then
+  if _saldo(p_tarjeta, v_prog) < v_meta then
     return json_build_object('ok', false, 'error', 'faltan_sellos');
   end if;
 
   select k.codigo, k.creado_en into v_codigo, v_creado
   from canjes k
-  where k.tarjeta_id = p_tarjeta and k.usado_en is null
+  where k.tarjeta_id = p_tarjeta and k.programa = v_prog and k.usado_en is null
     and k.creado_en > now() - interval '5 minutes'
   order by k.creado_en desc
   limit 1;
 
   if not found then
     v_codigo := _codigo_canje();
-    insert into canjes (tarjeta_id, codigo, creado_en)
-    values (p_tarjeta, v_codigo, now())
+    -- La meta vigente queda en el canje: si el negocio la cambia después, este premio se cobra con la de ahora.
+    insert into canjes (tarjeta_id, codigo, creado_en, programa, meta)
+    values (p_tarjeta, v_codigo, now(), v_prog, v_meta)
     returning creado_en into v_creado;
   end if;
 
@@ -322,13 +427,13 @@ as $$
 declare
   v_cafe cafeterias;
   v_canje canjes;
-  v_meta int := _meta();
 begin
   if _bloqueado() then
     return json_build_object('ok', false, 'error', 'bloqueado');
   end if;
   v_cafe := _cafeteria_por_pin(p_pin);
-  if v_cafe.id is null then
+  -- La cuenta de control solo entra (entrar) y va al panel de super admin: no vende, canjea ni edita tarjetas.
+  if v_cafe.id is null or v_cafe.super_admin then
     perform _registrar_fallo();
     return json_build_object('ok', false, 'error', 'pin_invalido');
   end if;
@@ -342,6 +447,14 @@ begin
     perform _registrar_fallo();
     return json_build_object('ok', false, 'error', 'canje_invalido');
   end if;
+  -- Premio Quetzalitos: solo distribuidores. Premio propio: solo el negocio dueño de ese programa.
+  if v_canje.programa = 'q' then
+    if not v_cafe.distribuidor then
+      return json_build_object('ok', false, 'error', 'no_distribuidor');
+    end if;
+  elsif v_canje.programa <> v_cafe.id::text then
+    return json_build_object('ok', false, 'error', 'canje_invalido');
+  end if;
   if v_canje.usado_en is not null then
     return json_build_object('ok', false, 'error', 'canje_usado');
   end if;
@@ -350,12 +463,13 @@ begin
   end if;
 
   perform 1 from tarjetas where id = v_canje.tarjeta_id for update;
-  if _saldo(v_canje.tarjeta_id) < v_meta then
+  if _saldo(v_canje.tarjeta_id, v_canje.programa) < coalesce(v_canje.meta, _meta(v_canje.programa)) then
     return json_build_object('ok', false, 'error', 'faltan_sellos');
   end if;
 
   update canjes set usado_en = now(), cafeteria_id = v_cafe.id where id = v_canje.id;
-  return json_build_object('ok', true, 'cafeteria', v_cafe.nombre);
+  return json_build_object('ok', true, 'cafeteria', v_cafe.nombre,
+                           'premio', _config_programa(v_canje.programa)->>'premio', 'programa', v_canje.programa);
 end
 $$;
 
@@ -381,9 +495,9 @@ begin
 
   select coalesce(json_agg(f order by f.escuela, f.cafeteria), '[]'::json) into v_filas
   from (
-    select c.nombre as cafeteria, c.escuela, c.slug, c.activa, c.tope_hora,
+    select c.nombre as cafeteria, c.escuela, c.slug, c.activa, c.tope_hora, c.distribuidor,
       (select count(*) from tokens t
-        where t.cafeteria_id = c.id and t.creado_en >= v_desde) as ventas,
+        where t.cafeteria_id = c.id and t.creado_en >= v_desde and t.cancelado_en is null) as ventas,
       (select count(*) from sellos s
         where s.cafeteria_id = c.id and s.creado_en >= v_desde) as reclamos,
       (select count(*) from canjes k
@@ -394,9 +508,40 @@ begin
           order by s.tarjeta_id, s.creado_en) p
         where p.cafeteria_id = c.id and p.creado_en >= v_desde) as tarjetas_nuevas
     from cafeterias c
+    where not c.super_admin
   ) f;
 
   return json_build_object('ok', true, 'filas', v_filas);
+end
+$$;
+
+-- Panel del propio negocio: con su PIN ve solo sus números (no la clave admin ni a las demás).
+create or replace function mis_metricas(p_pin text, p_dias int default null) returns json
+language plpgsql security definer set search_path = public, extensions, pg_temp
+as $$
+declare
+  v_cafe cafeterias;
+  v_desde timestamptz;
+begin
+  if _bloqueado() then
+    return json_build_object('ok', false, 'error', 'bloqueado');
+  end if;
+  v_cafe := _cafeteria_por_pin(p_pin);
+  -- La cuenta de control solo entra (entrar) y va al panel de super admin: no vende, canjea ni edita tarjetas.
+  if v_cafe.id is null or v_cafe.super_admin then
+    perform _registrar_fallo();
+    return json_build_object('ok', false, 'error', 'pin_invalido');
+  end if;
+  v_desde := case when p_dias is null then '-infinity'::timestamptz
+                  else now() - make_interval(days => least(greatest(p_dias, 1), 36500)) end;
+  return json_build_object('ok', true, 'cafeteria', v_cafe.nombre,
+    'ventas', (select count(*) from tokens t where t.cafeteria_id = v_cafe.id and t.creado_en >= v_desde and t.cancelado_en is null),
+    'reclamos', (select count(*) from sellos s where s.cafeteria_id = v_cafe.id and s.creado_en >= v_desde),
+    'canjes', (select count(*) from canjes k where k.cafeteria_id = v_cafe.id and k.usado_en >= v_desde),
+    'tarjetas_nuevas', (select count(*) from (
+        select distinct on (s.tarjeta_id) s.cafeteria_id, s.creado_en
+        from sellos s order by s.tarjeta_id, s.creado_en) p
+      where p.cafeteria_id = v_cafe.id and p.creado_en >= v_desde));
 end
 $$;
 
@@ -421,7 +566,7 @@ begin
     return json_build_object('ok', false, 'error', 'clave_invalida');
   end if;
 
-  if char_length(v_nombre) not between 2 and 80 or char_length(v_escuela) not between 1 and 40 then
+  if char_length(v_nombre) not between 2 and 80 or char_length(v_escuela) not between 0 and 40 then
     return json_build_object('ok', false, 'error', 'datos_invalidos');
   end if;
   if p_pin is null or p_pin !~ '^[0-9]{6}$' then
@@ -436,7 +581,7 @@ begin
   -- (el candado de _bloqueado() serializa las altas, así que no hay carrera entre dos llamadas).
   -- (se quitan los acentos antes de pasar a minúsculas: lower() no toca las letras con acento en todas las configuraciones regionales).
   v_base := trim(both '-' from left(regexp_replace(
-    lower(translate(v_nombre || ' ' || v_escuela,
+    lower(translate(btrim(v_nombre || ' ' || v_escuela),
       'áàäâãéèëêíìïîóòöôõúùüûñçÁÀÄÂÃÉÈËÊÍÌÏÎÓÒÖÔÕÚÙÜÛÑÇ',
       'aaaaaeeeeiiiiooooouuuuncAAAAAEEEEIIIIOOOOOUUUUNC')), '[^a-z0-9]+', '-', 'g'), 50));
   if v_base = '' then
@@ -530,7 +675,7 @@ begin
   v_escuela := v_cafe.escuela;
   if p_escuela is not null then
     v_escuela := btrim(regexp_replace(p_escuela, '\s+', ' ', 'g'));
-    if char_length(v_escuela) not between 1 and 40 then
+    if char_length(v_escuela) not between 0 and 40 then
       return json_build_object('ok', false, 'error', 'datos_invalidos');
     end if;
   end if;
@@ -561,18 +706,215 @@ begin
 end
 $$;
 
+-- Cada negocio edita su tarjeta con su PIN. Los parámetros null no se tocan; '' borra logo, color o mensaje. Valida TODO antes de escribir.
+create or replace function guardar_config(p_pin text, p_tipo text default null, p_logo text default null,
+  p_color text default null, p_meta int default null, p_premio text default null,
+  p_unidad text default null, p_mensaje text default null) returns json
+language plpgsql security definer set search_path = public, extensions, pg_temp
+as $$
+declare
+  v_cafe cafeterias;
+  v_tipo text;
+  v_logo text;
+  v_color text;
+  v_meta int;
+  v_premio text;
+  v_unidad text;
+  v_mensaje text;
+begin
+  if _bloqueado() then
+    return json_build_object('ok', false, 'error', 'bloqueado');
+  end if;
+  v_cafe := _cafeteria_por_pin(p_pin);
+  -- La cuenta de control solo entra (entrar) y va al panel de super admin: no vende, canjea ni edita tarjetas.
+  if v_cafe.id is null or v_cafe.super_admin then
+    perform _registrar_fallo();
+    return json_build_object('ok', false, 'error', 'pin_invalido');
+  end if;
+
+  v_tipo := case when p_tipo is null then v_cafe.tipo else btrim(regexp_replace(p_tipo, '\s+', ' ', 'g')) end;
+  v_logo := case when p_logo is null then v_cafe.logo else nullif(btrim(p_logo), '') end;
+  v_color := case when p_color is null then v_cafe.color else nullif(btrim(p_color), '') end;
+  v_meta := coalesce(p_meta, v_cafe.meta);
+  v_premio := case when p_premio is null then v_cafe.premio else btrim(regexp_replace(p_premio, '\s+', ' ', 'g')) end;
+  v_unidad := case when p_unidad is null then v_cafe.unidad else btrim(regexp_replace(p_unidad, '\s+', ' ', 'g')) end;
+  v_mensaje := case when p_mensaje is null then v_cafe.mensaje else nullif(btrim(regexp_replace(p_mensaje, '\s+', ' ', 'g')), '') end;
+
+  if char_length(v_tipo) not between 1 and 30
+     or (v_logo is not null and not (
+           (char_length(v_logo) <= 60000 and v_logo ~ '^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$')
+        or (char_length(v_logo) <= 300 and v_logo not like '%..%'
+            and v_logo ~ '^(https://[^[:space:]"''<>]+|img/negocios/[A-Za-z0-9._/-]+)$')))
+     or (v_color is not null and v_color !~ '^#[0-9a-fA-F]{6}$')
+     or v_meta not between 1 and 50
+     or char_length(v_premio) not between 1 and 60
+     or char_length(v_unidad) not between 1 and 20
+     or (v_mensaje is not null and char_length(v_mensaje) > 120) then
+    return json_build_object('ok', false, 'error', 'config_invalida');
+  end if;
+
+  update cafeterias set tipo = v_tipo, logo = v_logo, color = v_color, meta = v_meta,
+    premio = v_premio, unidad = v_unidad, mensaje = v_mensaje
+  where id = v_cafe.id;
+
+  return json_build_object('ok', true, 'tipo', v_tipo, 'logo', v_logo, 'color', v_color, 'meta', v_meta,
+                           'premio', v_premio, 'unidad', v_unidad, 'mensaje', v_mensaje);
+end
+$$;
+
+-- Tema visual del negocio. p_tema es un objeto con claves opcionales: acento, acento2, fondo (#RRGGBB), fuente_titulo y fuente_texto
+-- (de una lista cerrada de fuentes locales), emoji_venta, emoji_canje, emoji_panel (1 a 8 caracteres) y fondo_img (https, img/negocios/ o una foto data:image de hasta 150 000 caracteres).
+-- Guarda solo lo válido y reemplaza el tema entero; vacío o {} lo restablece. Un dato inválido no cambia nada.
+create or replace function guardar_tema(p_pin text, p_tema json) returns json
+language plpgsql security definer set search_path = public, extensions, pg_temp
+as $$
+declare
+  v_cafe cafeterias;
+  v_in jsonb;
+  v_out jsonb := '{}'::jsonb;
+  k text;
+  val text;
+begin
+  if _bloqueado() then
+    return json_build_object('ok', false, 'error', 'bloqueado');
+  end if;
+  v_cafe := _cafeteria_por_pin(p_pin);
+  -- La cuenta de control solo entra (entrar) y va al panel de super admin: no vende, canjea ni edita tarjetas.
+  if v_cafe.id is null or v_cafe.super_admin then
+    perform _registrar_fallo();
+    return json_build_object('ok', false, 'error', 'pin_invalido');
+  end if;
+
+  v_in := coalesce(p_tema::jsonb, '{}'::jsonb);
+  if jsonb_typeof(v_in) is distinct from 'object' then
+    return json_build_object('ok', false, 'error', 'tema_invalido');
+  end if;
+  for k in select jsonb_object_keys(v_in) loop
+    if jsonb_typeof(v_in -> k) not in ('string', 'null') then
+      return json_build_object('ok', false, 'error', 'tema_invalido');
+    end if;
+    val := nullif(btrim(v_in ->> k), '');
+    continue when val is null;
+    if k in ('acento', 'acento2', 'fondo') then
+      if val !~ '^#[0-9a-fA-F]{6}$' then return json_build_object('ok', false, 'error', 'tema_invalido'); end if;
+    elsif k in ('fuente_titulo', 'fuente_texto') then
+      if val not in ('instrument-serif', 'dm-sans', 'sistema', 'georgia', 'redondeada', 'mono') then
+        return json_build_object('ok', false, 'error', 'tema_invalido');
+      end if;
+    elsif k in ('emoji_venta', 'emoji_canje', 'emoji_panel') then
+      if char_length(val) > 8 or val ~ '[<>&"''`\\[:space:]]' then return json_build_object('ok', false, 'error', 'tema_invalido'); end if;
+    elsif k = 'fondo_img' then
+      if not ((char_length(val) <= 150000 and val ~ '^data:image/(jpeg|png|webp);base64,[A-Za-z0-9+/]+=*$')
+              or (char_length(val) <= 300 and val not like '%..%'
+                  and val ~ '^(https://[^[:space:]"''<>()\\]+|img/negocios/[A-Za-z0-9._/-]+)$')) then
+        return json_build_object('ok', false, 'error', 'tema_invalido');
+      end if;
+    else
+      return json_build_object('ok', false, 'error', 'tema_invalido');
+    end if;
+    v_out := v_out || jsonb_build_object(k, val);
+  end loop;
+
+  update cafeterias set tema = nullif(v_out, '{}'::jsonb) where id = v_cafe.id;
+  return json_build_object('ok', true, 'tema', nullif(v_out, '{}'::jsonb));
+end
+$$;
+
+-- Super admin: ve y edita la tarjeta del programa Quetzalitos (el diseño no cambia, solo meta, premio, palabra y mensaje).
+-- Los parámetros null no se tocan ('' en el mensaje lo borra); con todos null solo devuelve lo vigente.
+create or replace function quetzalitos_config(p_clave text, p_meta int default null, p_premio text default null,
+  p_unidad text default null, p_mensaje text default null) returns json
+language plpgsql security definer set search_path = public, extensions, pg_temp
+as $$
+declare
+  v_hash text;
+  v_premio text;
+  v_unidad text;
+  v_mensaje text;
+begin
+  if _bloqueado() then
+    return json_build_object('ok', false, 'error', 'bloqueado');
+  end if;
+  select valor into v_hash from config where clave = 'admin_hash';
+  if v_hash is null or extensions.crypt(p_clave, v_hash) is distinct from v_hash then
+    perform _registrar_fallo();
+    return json_build_object('ok', false, 'error', 'clave_invalida');
+  end if;
+
+  v_premio := case when p_premio is null then null else btrim(regexp_replace(p_premio, '\s+', ' ', 'g')) end;
+  v_unidad := case when p_unidad is null then null else btrim(regexp_replace(p_unidad, '\s+', ' ', 'g')) end;
+  v_mensaje := case when p_mensaje is null then null else btrim(regexp_replace(p_mensaje, '\s+', ' ', 'g')) end;
+  if (p_meta is not null and p_meta not between 1 and 50)
+     or (v_premio is not null and char_length(v_premio) not between 1 and 60)
+     or (v_unidad is not null and char_length(v_unidad) not between 1 and 20)
+     or (v_mensaje is not null and char_length(v_mensaje) > 120) then
+    return json_build_object('ok', false, 'error', 'config_invalida');
+  end if;
+
+  if p_meta is not null then
+    insert into config (clave, valor) values ('meta', p_meta::text) on conflict (clave) do update set valor = excluded.valor;
+  end if;
+  if v_premio is not null then
+    insert into config (clave, valor) values ('q_premio', v_premio) on conflict (clave) do update set valor = excluded.valor;
+  end if;
+  if v_unidad is not null then
+    insert into config (clave, valor) values ('q_unidad', v_unidad) on conflict (clave) do update set valor = excluded.valor;
+  end if;
+  if v_mensaje = '' then
+    delete from config where clave = 'q_mensaje';
+  elsif v_mensaje is not null then
+    insert into config (clave, valor) values ('q_mensaje', v_mensaje) on conflict (clave) do update set valor = excluded.valor;
+  end if;
+
+  return json_build_object('ok', true, 'config', _config_programa('q'));
+end
+$$;
+
+-- Super admin: activa o desactiva que un negocio sea distribuidor de Quetzalitos (mismo candado, bloqueo y clave que metricas).
+create or replace function set_distribuidor(p_clave text, p_slug text, p_valor boolean) returns json
+language plpgsql security definer set search_path = public, extensions, pg_temp
+as $$
+declare
+  v_hash text;
+  v_cafe cafeterias;
+begin
+  if _bloqueado() then
+    return json_build_object('ok', false, 'error', 'bloqueado');
+  end if;
+  select valor into v_hash from config where clave = 'admin_hash';
+  if v_hash is null or extensions.crypt(p_clave, v_hash) is distinct from v_hash then
+    perform _registrar_fallo();
+    return json_build_object('ok', false, 'error', 'clave_invalida');
+  end if;
+  update cafeterias set distribuidor = coalesce(p_valor, false)
+  where slug = p_slug and not super_admin returning * into v_cafe;
+  if v_cafe.id is null then
+    return json_build_object('ok', false, 'error', 'no_existe');
+  end if;
+  return json_build_object('ok', true, 'cafeteria', v_cafe.nombre, 'distribuidor', v_cafe.distribuidor);
+end
+$$;
+
 -- Permisos --------------------------------------------------------------------
 
-revoke all on function _meta(), _bloqueado(), _registrar_fallo(), _cafeteria_por_pin(text),
-  _saldo(uuid), _codigo_canje()
+revoke all on function _meta(text), _bloqueado(), _registrar_fallo(), _cafeteria_por_pin(text),
+  _saldo(uuid, text), _config_programa(text), _codigo_canje()
   from public, anon, authenticated;
 
-revoke all on function entrar(text), crear_venta(text), reclamar(text, uuid), tarjeta(uuid),
-  pedir_canje(uuid), canjear(text, text), metricas(text, int), crear_cafeteria(text, text, text, text),
-  eliminar_cafeteria(text, text), editar_cafeteria(text, text, text, text, text, boolean, int)
+revoke all on function entrar(text), crear_venta(text, boolean), reclamar(text, uuid), tarjeta(uuid, text),
+  pedir_canje(uuid, text), canjear(text, text), metricas(text, int), mis_metricas(text, int), crear_cafeteria(text, text, text, text),
+  eliminar_cafeteria(text, text), editar_cafeteria(text, text, text, text, text, boolean, int),
+  guardar_config(text, text, text, text, int, text, text, text), set_distribuidor(text, text, boolean),
+  guardar_tema(text, json),
+  cancelar_venta(text, text),
+  quetzalitos_config(text, int, text, text, text)
   from public, anon, authenticated;
 
-grant execute on function entrar(text), crear_venta(text), reclamar(text, uuid), tarjeta(uuid),
-  pedir_canje(uuid), canjear(text, text), metricas(text, int), crear_cafeteria(text, text, text, text),
-  eliminar_cafeteria(text, text), editar_cafeteria(text, text, text, text, text, boolean, int)
+grant execute on function entrar(text), crear_venta(text, boolean), reclamar(text, uuid), tarjeta(uuid, text),
+  pedir_canje(uuid, text), canjear(text, text), metricas(text, int), mis_metricas(text, int), crear_cafeteria(text, text, text, text),
+  eliminar_cafeteria(text, text), editar_cafeteria(text, text, text, text, text, boolean, int),
+  guardar_config(text, text, text, text, int, text, text, text), set_distribuidor(text, text, boolean),
+  guardar_tema(text, json),
+  cancelar_venta(text, text),
+  quetzalitos_config(text, int, text, text, text)
   to anon, authenticated;

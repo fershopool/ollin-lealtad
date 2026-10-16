@@ -24,7 +24,6 @@
   const okNueva = $('n-ok');
   const errorNueva = $('n-error');
   const listaEscuelas = $('escuelas');
-  const seccionEliminar = $('eliminar');
   const formEliminar = $('form-eliminar');
   const selCual = $('e-cual');
   const btnBorrar = $('e-borrar');
@@ -44,6 +43,7 @@
   const inMEscuela = $('m-escuela');
   const inMPin = $('m-pin');
   const inMActiva = $('m-activa');
+  const inMDistribuidor = $('m-distribuidor');
   const inMTope = $('m-tope');
   const btnGuardar = $('m-guardar');
   const okEditar = $('m-ok');
@@ -51,14 +51,75 @@
   let filasActuales = []; // últimas filas de métricas: alimentan la sección de edición
   let rellenarTrasGuardar = false; // el siguiente refresco vuelve a llenar el formulario de edición con datos del servidor
 
-  // Las secciones de alta y baja solo se ven con la clave admin ya validada.
-  function mostrarAdmin(visible) {
-    seccionNueva.classList.toggle('oculto', !visible);
-    seccionEliminar.classList.toggle('oculto', !visible);
-    seccionEditar.classList.toggle('oculto', !visible);
-    if (!visible) { // sin clave no queda una confirmación pendiente
+  // Tarjeta Quetzalitos: la meta, la palabra, el premio y el mensaje que ve el cliente.
+  const seccionQ = $('quetzalitos');
+  const formQ = $('form-quetzalitos');
+  const inQMeta = $('q-meta');
+  const inQUnidad = $('q-unidad');
+  const inQPremio = $('q-premio');
+  const inQMensaje = $('q-mensaje');
+  const btnQGuardar = $('q-guardar');
+  const okQ = $('q-ok');
+  const errorQ = $('q-error');
+  const vistaSellos = $('q-sellos');
+  const vistaTexto = $('q-texto');
+  const vistaMensaje = $('q-mensaje-vista');
+  let qCargada = false; // la tarjeta vigente se carga al entrar a la sección, con la clave validada
+
+  // Menú flotante: una sección a la vez. Solo se ven con la clave admin ya validada.
+  // «#eliminar» (enlace viejo) abre Editar, donde ahora vive la zona de peligro.
+  const SECCIONES = ['metricas', 'nueva', 'editar', 'quetzalitos'];
+  const ALIAS = { eliminar: 'editar' };
+  const seccionMetricas = $('metricas');
+  const menu = $('menu');
+  const botonesMenu = menu.querySelectorAll('[data-seccion]');
+  const btnSalir = $('salir');
+  const btnActualizar = $('actualizar');
+  let adentro = false; // clave validada: hay menú y sección visible
+  let seccion = 'metricas';
+
+  function seccionDesdeHash() {
+    let h = location.hash.slice(1);
+    if (ALIAS[h]) h = ALIAS[h];
+    return SECCIONES.includes(h) ? h : 'metricas';
+  }
+
+  function pintarSeccion() {
+    const todas = { metricas: seccionMetricas, nueva: seccionNueva, editar: seccionEditar, quetzalitos: seccionQ };
+    for (const s of SECCIONES) todas[s].classList.toggle('oculto', !adentro || s !== seccion);
+    for (const b of botonesMenu) {
+      const activa = b.dataset.seccion === seccion;
+      b.classList.toggle('activo', activa);
+      if (activa) b.setAttribute('aria-current', 'page');
+      else b.removeAttribute('aria-current');
+    }
+  }
+
+  // Cambia de sección y deja la elegida en el hash (sin llenar el historial).
+  function irA(s) {
+    const previa = seccion;
+    seccion = SECCIONES.includes(s) ? s : 'metricas';
+    if (location.hash !== '#' + seccion) history.replaceState(null, '', '#' + seccion);
+    if (previa === 'editar' && seccion !== 'editar') { // una baja a medias no sigue esperando al cambiar de sección
       pendiente = null;
       cajaConfirmar.classList.add('oculto');
+    }
+    pintarSeccion();
+    if (adentro && seccion === 'quetzalitos' && (previa !== 'quetzalitos' || !qCargada)) cargarQuetzalitos();
+  }
+
+  function mostrarAdmin(visible) {
+    adentro = visible;
+    form.classList.toggle('oculto', visible); // con la clave validada se oculta el formulario; la clave sigue solo en memoria
+    menu.classList.toggle('oculto', !visible);
+    document.body.classList.toggle('con-nav', visible);
+    if (visible) {
+      irA(seccionDesdeHash());
+    } else { // sin clave no queda una confirmación pendiente ni la tarjeta cargada
+      qCargada = false;
+      pendiente = null;
+      cajaConfirmar.classList.add('oculto');
+      pintarSeccion();
     }
   }
 
@@ -80,7 +141,7 @@
 
   // Adopción = reclamos / ventas. Sin ventas no hay base para calcular.
   function adopcion(reclamos, ventas) {
-    return ventas > 0 ? Math.round((reclamos / ventas) * 100) + ' %' : '—';
+    return ventas > 0 ? Math.min(100, Math.round((reclamos / ventas) * 100)) + ' %' : '—';
   }
 
   // Nombre tal como se ve en tablas y listas; «desactivada» solo si la fila lo indica.
@@ -88,11 +149,16 @@
     return f.cafeteria + (f.activa === false ? ' · desactivada' : '');
   }
 
+  // La escuela va entre paréntesis solo si la cafetería tiene una (la escuela es opcional).
+  function conEscuela(f) {
+    return f.escuela ? ' (' + f.escuela + ')' : '';
+  }
+
   function opciones(filas) {
     return filas.map((f) => {
       const o = document.createElement('option');
       o.value = f.slug;
-      o.textContent = etiqueta(f) + ' (' + f.escuela + ')';
+      o.textContent = etiqueta(f) + conEscuela(f);
       return o;
     });
   }
@@ -103,6 +169,7 @@
     inMNombre.value = f ? f.cafeteria : '';
     inMEscuela.value = f ? f.escuela : '';
     inMActiva.checked = f ? f.activa !== false : false;
+    inMDistribuidor.checked = f ? f.distribuidor === true : false;
     inMTope.value = f ? (f.tope_hora ?? '') : '';
   }
 
@@ -116,13 +183,13 @@
       total.canjes += f.canjes;
       total.tarjetas_nuevas += f.tarjetas_nuevas;
       const tr = document.createElement('tr');
-      [etiqueta(f), f.escuela, f.ventas, f.reclamos, adopcion(f.reclamos, f.ventas), f.canjes, f.tarjetas_nuevas]
+      [etiqueta(f), f.escuela || '—', f.ventas, f.reclamos, adopcion(f.reclamos, f.ventas), f.canjes, f.tarjetas_nuevas, f.distribuidor === true ? 'Sí' : 'No']
         .forEach((v) => tr.appendChild(celda(v)));
       cuerpo.appendChild(tr);
     }
     const tr = document.createElement('tr');
     tr.className = 'total';
-    ['Total', '', total.ventas, total.reclamos, adopcion(total.reclamos, total.ventas), total.canjes, total.tarjetas_nuevas]
+    ['Total', '', total.ventas, total.reclamos, adopcion(total.reclamos, total.ventas), total.canjes, total.tarjetas_nuevas, '']
       .forEach((v) => tr.appendChild(celda(v)));
     cuerpo.appendChild(tr);
     tabla.classList.remove('oculto');
@@ -230,7 +297,7 @@
     const negrita = document.createElement('strong');
     negrita.textContent = pin;
     okNueva.replaceChildren(
-      'Cafetería «' + res.cafeteria + '» (' + res.escuela + ') creada. PIN: ', negrita,
+      'Cafetería «' + res.cafeteria + '»' + conEscuela(res) + ' creada. PIN: ', negrita,
       '. Anótalo y entrégalo al personal de caja: no se puede volver a consultar.'
     );
     ultimaAlta = res.slug;
@@ -302,7 +369,7 @@
       okEditar.classList.add('oculto');
       ultimaEdicionPin = null;
     }
-    okElim.textContent = 'Cafetería «' + res.cafeteria + '» (' + res.escuela + ') eliminada.';
+    okElim.textContent = 'Cafetería «' + res.cafeteria + '»' + conEscuela(res) + ' eliminada.';
     okElim.classList.remove('oculto');
     consultar(true);
   });
@@ -318,46 +385,163 @@
     errorNueva.classList.add('oculto');
     okElim.classList.add('oculto');
     errorElim.classList.add('oculto');
+    // El distribuidor es un paso aparte: se llama si la casilla cambió, aunque no cambie ningún otro dato.
+    const filaActual = filasActuales.find((x) => x.slug === slug);
+    const valorDist = inMDistribuidor.checked;
+    const cambioDist = !!filaActual && valorDist !== (filaActual.distribuidor === true);
     btnGuardar.disabled = true;
     const res = await Q.rpc('editar_cafeteria', {
       p_clave: clave, p_slug: slug, p_nombre: inMNombre.value.trim(), p_escuela: inMEscuela.value.trim(),
       p_pin: pin, p_activa: inMActiva.checked, p_tope_hora: Number(inMTope.value)
     });
+    let resDist = null;
+    if (cambioDist && (!res || res.error !== 'clave_invalida')) {
+      resDist = await Q.rpc('set_distribuidor', { p_clave: clave, p_slug: slug, p_valor: valorDist });
+    }
     btnGuardar.disabled = false;
-    if (!res || !res.ok) {
-      const codigo = (res && res.error) || 'red';
-      if (codigo === 'clave_invalida') {
-        clave = null;
-        mostrarAdmin(false);
-        tabla.classList.add('oculto');
-        mostrarError(codigo);
-        return;
-      }
-      errorEditar.textContent = codigo === 'red'
-        ? 'No se pudo confirmar la respuesta. Revisa la tabla e inténtalo de nuevo.'
-        : Q.msg(codigo);
-      errorEditar.classList.remove('oculto');
-      if (codigo === 'red' || codigo === 'no_existe') consultar(true);
+    const errEdit = !res || !res.ok ? ((res && res.error) || 'red') : null;
+    const errDist = resDist && !resDist.ok ? (resDist.error || 'red') : null;
+    if (errEdit === 'clave_invalida' || errDist === 'clave_invalida') {
+      clave = null;
+      mostrarAdmin(false);
+      tabla.classList.add('oculto');
+      mostrarError('clave_invalida');
       return;
     }
-    const partes = ['Cambios guardados en «' + res.cafeteria + '» (' + res.escuela + ').'];
-    if (res.pin_cambiado) {
-      const negrita = document.createElement('strong');
-      negrita.textContent = pin;
-      partes.push(' PIN nuevo: ', negrita, '. Anótalo y entrégalo al personal de caja: no se puede volver a consultar.');
+    const distOk = !!resDist && resDist.ok;
+    const reintentar = ['red', 'no_existe'];
+    // Cada paso informa por su cuenta: un fallo de uno no oculta el éxito del otro.
+    const errores = [];
+    if (errEdit) {
+      errores.push(errEdit === 'red'
+        ? 'No se pudo confirmar la respuesta. Revisa la tabla e inténtalo de nuevo.'
+        : Q.msg(errEdit));
     }
-    if (!res.pin_cambiado && ultimaEdicionPin !== null && !okEditar.classList.contains('oculto')) {
-      okEditar.append(document.createElement('br'), partes[0]); // hay un PIN sin anotar a la vista: se añade debajo, no se borra
-    } else {
-      okEditar.replaceChildren(...partes);
-      ultimaEdicionPin = res.pin_cambiado ? slug : null;
+    if (errDist) {
+      const textoDist = errDist === 'red' ? 'no se pudo confirmar la respuesta.' : Q.msg(errDist);
+      errores.push((errEdit ? 'Tampoco se pudo cambiar distribuidor: ' : 'Datos guardados, pero no se pudo cambiar distribuidor: ') + textoDist);
     }
-    inMPin.value = '';
-    okEditar.classList.remove('oculto');
-    okEditar.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    rellenarTrasGuardar = true;
-    consultar(true);
+    if (errores.length) {
+      errorEditar.textContent = errores.join(' ');
+      errorEditar.classList.remove('oculto');
+    }
+    if (!errEdit) {
+      const partes = ['Cambios guardados en «' + res.cafeteria + '»' + conEscuela(res) + '.'];
+      if (distOk) partes.push(' Distribuidor: ' + (valorDist ? 'sí' : 'no') + '.');
+      if (res.pin_cambiado) {
+        const negrita = document.createElement('strong');
+        negrita.textContent = pin;
+        partes.push(' PIN nuevo: ', negrita, '. Anótalo y entrégalo al personal de caja: no se puede volver a consultar.');
+      }
+      if (!res.pin_cambiado && ultimaEdicionPin !== null && !okEditar.classList.contains('oculto')) {
+        okEditar.append(document.createElement('br'), ...partes); // hay un PIN sin anotar a la vista: se añade debajo, no se borra
+      } else {
+        okEditar.replaceChildren(...partes);
+        ultimaEdicionPin = res.pin_cambiado ? slug : null;
+      }
+      inMPin.value = '';
+      okEditar.classList.remove('oculto');
+      okEditar.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    } else if (distOk) {
+      // Los datos no se guardaron, pero el distribuidor sí: se avisa sin tocar un PIN pendiente de anotar.
+      const aviso = 'Distribuidor de «' + resDist.cafeteria + '» actualizado.';
+      if (okEditar.classList.contains('oculto')) okEditar.textContent = aviso;
+      else okEditar.append(document.createElement('br'), aviso);
+      okEditar.classList.remove('oculto');
+    }
+    if (!errEdit || distOk) rellenarTrasGuardar = true;
+    if (!errEdit || distOk || reintentar.includes(errEdit) || reintentar.includes(errDist)) consultar(true);
   });
+
+  // Tarjeta Quetzalitos: solo los valores; el diseño de la tarjeta vive en el CSS del cliente.
+  let pedidoQ = 0;
+
+  function claveInvalidaQ() {
+    clave = null;
+    mostrarAdmin(false);
+    tabla.classList.add('oculto');
+    mostrarError('clave_invalida');
+  }
+
+  function pintarVistaQ() {
+    const meta = Math.min(50, Math.max(0, Math.floor(Number(inQMeta.value)) || 0));
+    const palabra = inQUnidad.value.trim() || 'sellos';
+    const premio = inQPremio.value.trim();
+    vistaSellos.className = 'sellos' + (meta > 6 ? ' cinco' : '');
+    const piezas = [];
+    for (let i = 0; i < meta; i++) {
+      const s = document.createElement('div');
+      s.className = 'sello';
+      piezas.push(s);
+    }
+    const p = document.createElement('div');
+    p.className = 'sello premio';
+    p.textContent = premio || 'Premio';
+    piezas.push(p);
+    vistaSellos.replaceChildren(...piezas);
+    vistaTexto.textContent = 'Llevas 0 de ' + meta + ' ' + palabra + (premio ? ' · ' + premio : '');
+    const msg = inQMensaje.value.trim();
+    vistaMensaje.textContent = msg;
+    vistaMensaje.classList.toggle('oculto', !msg);
+  }
+
+  function pintarQ(c) {
+    inQMeta.value = c.meta;
+    inQUnidad.value = c.unidad;
+    inQPremio.value = c.premio;
+    inQMensaje.value = c.mensaje || '';
+    pintarVistaQ();
+  }
+
+  async function cargarQuetzalitos() {
+    if (!clave) return;
+    const id = ++pedidoQ;
+    okQ.classList.add('oculto');
+    errorQ.classList.add('oculto');
+    btnQGuardar.disabled = true;
+    const res = await Q.rpc('quetzalitos_config', { p_clave: clave }); // sin p_* devuelve lo vigente
+    if (id !== pedidoQ) return;
+    btnQGuardar.disabled = false;
+    if (!res || !res.ok) {
+      const codigo = (res && res.error) || 'red';
+      if (codigo === 'clave_invalida') { claveInvalidaQ(); return; }
+      errorQ.textContent = Q.msg(codigo);
+      errorQ.classList.remove('oculto');
+      return;
+    }
+    qCargada = true;
+    pintarQ(res.config);
+  }
+
+  formQ.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!clave) return;
+    okQ.classList.add('oculto');
+    errorQ.classList.add('oculto');
+    btnQGuardar.disabled = true;
+    const res = await Q.rpc('quetzalitos_config', {
+      p_clave: clave, p_meta: Number(inQMeta.value), p_unidad: inQUnidad.value.trim(),
+      p_premio: inQPremio.value.trim(), p_mensaje: inQMensaje.value.trim() // «» borra el mensaje
+    });
+    btnQGuardar.disabled = false;
+    if (!res || !res.ok) {
+      const codigo = (res && res.error) || 'red';
+      if (codigo === 'clave_invalida') { claveInvalidaQ(); return; }
+      if (codigo === 'red') qCargada = false; // no se sabe si se guardó: la próxima vez se vuelve a cargar lo vigente
+      errorQ.textContent = codigo === 'red'
+        ? 'No se pudo confirmar la respuesta. Revisa la tarjeta antes de guardar otra vez.'
+        : Q.msg(codigo);
+      errorQ.classList.remove('oculto');
+      return;
+    }
+    qCargada = true;
+    pintarQ(res.config);
+    okQ.textContent = 'Tarjeta Quetzalitos guardada.';
+    okQ.classList.remove('oculto');
+    okQ.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  });
+
+  [inQMeta, inQUnidad, inQPremio, inQMensaje].forEach((el) => el.addEventListener('input', pintarVistaQ));
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -370,4 +554,25 @@
     dias = selPeriodo.value ? Number(selPeriodo.value) : null;
     consultar();
   });
+
+  btnActualizar.addEventListener('click', async () => {
+    btnActualizar.disabled = true;
+    await consultar();
+    btnActualizar.disabled = false;
+  });
+
+  for (const b of botonesMenu) {
+    b.addEventListener('click', () => irA(b.dataset.seccion));
+  }
+
+  // Volver regresa a la pantalla principal (caja); la clave solo vive en memoria y se olvida al salir de esta página.
+  btnSalir.addEventListener('click', () => {
+    clave = null;
+    location.href = '../caja/';
+  });
+
+  window.addEventListener('hashchange', () => irA(seccionDesdeHash()));
+
+  // Al cargar: sin clave validada no hay menú ni sección visible; solo se recuerda cuál abrir.
+  irA(seccionDesdeHash());
 })();

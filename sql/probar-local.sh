@@ -57,9 +57,9 @@ psql -d "$BD" -X -v ON_ERROR_STOP=1 -q -f "$DIR/pruebas.sql" || fallo "pruebas.s
 
 # ---------- Carrera 1: 20 reclamos del mismo token ----------
 psql -d "$BD" -X -v ON_ERROR_STOP=1 -q <<'SQL'
-insert into public.cafeterias (id, nombre, escuela, slug, pin_hash, lat, lng, activa, tope_hora)
+insert into public.cafeterias (id, nombre, escuela, slug, pin_hash, lat, lng, activa, tope_hora, distribuidor)
 values ('00000000-0000-0000-0000-0000000000ca', 'Cafe Carrera', 'Escuela Carrera', 'cafe-carrera',
-        extensions.crypt('333333', extensions.gen_salt('bf')), 19.4, -99.1, true, 1000);
+        extensions.crypt('333333', extensions.gen_salt('bf')), 19.4, -99.1, true, 1000, true);
 SQL
 
 CODIGO="$(psql -d "$BD" -X -At -v ON_ERROR_STOP=1 -c "select public.crear_venta('333333')->>'codigo';")" \

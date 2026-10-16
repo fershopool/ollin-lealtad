@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="es" data-marca="tlatolli">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <meta name="apple-mobile-web-app-title" content="Panel Tlatolli">
+  <meta name="theme-color" content="#03211A">
+  <title>Panel · Tlatolli</title>
+  <link rel="icon" type="image/png" href="../img/icono.png">
+  <link rel="apple-touch-icon" href="../img/icono.png">
+  <link rel="stylesheet" href="../fonts/fonts.css?v=10">
+  <link rel="stylesheet" href="../estilo.css?v=10">
+  <link rel="stylesheet" href="negocio.css?v=12">
+</head>
+<body class="con-nav">
+<main>
+  <header class="cabecera"><div class="greca"></div></header>
+
+  <section id="carga">
+    <div class="cargador" role="status">
+      <div class="cargador-anillo"><div class="cargador-logo"><img src="../img/tlatolli-chico.jpg" alt="Tlatolli" width="320" height="212"></div></div>
+      <p id="carga-verificando" class="cargador-texto" aria-live="polite">Verificando</p>
+      <div class="cargador-greca" aria-hidden="true"></div>
+    </div>
+    <p id="carga-msg" aria-live="polite" class="msg-slot"></p>
+    <button id="btn-reintentar" class="btn btn-oro oculto" type="button">Reintentar</button>
+  </section>
+
+  <section id="panel" class="oculto">
+
+    <section id="sec-resumen" class="pila" aria-labelledby="titulo">
+      <div class="cab-negocio">
+        <img id="logo" class="logo-negocio" src="../img/logo.png" alt="" width="64" height="64">
+        <div class="cab-texto">
+          <h1 id="titulo"></h1>
+          <p id="subtitulo"></p>
+        </div>
+      </div>
+
+      <div id="periodo" class="segmentado" role="group" aria-label="Periodo de las métricas">
+        <button type="button" class="seg-op" data-dias="7" aria-pressed="true">7 días</button>
+        <button type="button" class="seg-op" data-dias="30" aria-pressed="false">30 días</button>
+        <button type="button" class="seg-op" data-dias="todo" aria-pressed="false">Todo</button>
+      </div>
+
+      <p id="metricas-msg" aria-live="polite" class="msg-slot"></p>
+      <div class="bento">
+        <article class="superficie metrica destacada">
+          <div class="metrica-cab">
+            <span class="insignia oro" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/></svg></span>
+            <span class="etq">Ventas</span>
+          </div>
+          <span id="m-ventas" class="num grande">—</span>
+          <p class="etq-sub">QR generados desde caja</p>
+        </article>
+
+        <article class="superficie metrica">
+          <span class="insignia jade" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg></span>
+          <span id="m-reclamos" class="num">—</span>
+          <span class="etq">Reclamos</span>
+        </article>
+
+        <article class="superficie metrica">
+          <span class="insignia terra" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24"><rect x="4" y="9" width="16" height="11" rx="2"/><path d="M3 9h18M12 9v11M12 9c-1.5-3-5-4-5-1.5S10 9 12 9zM12 9c1.5-3 5-4 5-1.5S14 9 12 9z"/></svg></span>
+          <span id="m-canjes" class="num">—</span>
+          <span class="etq">Canjes</span>
+        </article>
+
+        <article class="superficie metrica">
+          <span class="insignia oro" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M7 15h4"/></svg></span>
+          <span id="m-tarjetas" class="num">—</span>
+          <span class="etq">Tarjetas nuevas</span>
+        </article>
+
+        <article class="superficie metrica adopcion">
+          <div class="metrica-cab">
+            <span class="insignia jade" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24"><path d="M3 20h18M6 16l4-5 3 3 5-6"/></svg></span>
+            <span class="etq">Adopción</span>
+            <span id="m-adopcion" class="valor">—</span>
+          </div>
+          <div id="m-adopcion-track" class="barra-prog" role="progressbar" aria-label="Adopción" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i id="m-adopcion-barra"></i></div>
+          <p class="etq-sub">Reclamos sobre ventas</p>
+        </article>
+      </div>
+      <p class="nota">Ventas = QR generados desde caja. Reclamos = QR escaneados por clientes.</p>
+    </section>
+
+    <section id="sec-tarjeta" class="pila oculto" aria-label="Mi tarjeta">
+      <h2 class="sr-solo">Mi tarjeta</h2>
+
+      <div id="previa" class="superficie previa" aria-live="off">
+        <img id="previa-logo" src="../img/logo.png" alt="" width="52" height="52">
+        <p id="previa-nombre" class="previa-nombre"></p>
+        <p id="previa-conteo" class="previa-conteo"></p>
+        <div id="previa-circulos" class="previa-circulos"></div>
+        <p id="previa-premio" class="previa-premio"></p>
+        <p id="previa-mensaje" class="previa-mensaje"></p>
+      </div>
+
+      <form id="form-tarjeta" class="pila" novalidate>
+
+        <details class="grupo" open>
+          <summary>Programa</summary>
+          <div class="divisor" aria-hidden="true"><i></i></div>
+
+          <label for="f-meta">Sellos para el premio</label>
+          <input id="f-meta" class="campo-c" type="number" min="1" max="50" step="1" inputmode="numeric" aria-describedby="f-meta-ayuda">
+          <p id="f-meta-ayuda" class="ayuda">Número entero de 1 a 50.</p>
+
+          <label for="f-unidad">Palabra para lo que se junta</label>
+          <input id="f-unidad" class="campo-c" type="text" maxlength="20" autocomplete="off" placeholder="sellos" aria-describedby="f-unidad-ayuda">
+          <p id="f-unidad-ayuda" class="ayuda">En plural: sellos, puntos, visitas.</p>
+
+          <label for="f-premio">Premio</label>
+          <input id="f-premio" class="campo-c" type="text" maxlength="60" autocomplete="off" placeholder="Un café gratis">
+
+          <label for="f-mensaje">Mensaje de la tarjeta (opcional)</label>
+          <input id="f-mensaje" class="campo-c" type="text" maxlength="120" autocomplete="off" placeholder="¡Gracias por venir!">
+        </details>
+
+        <p class="nota">Si cambias la meta, los sellos que ya tienen tus clientes se conservan; el cambio aplica a los premios que pidan de ahora en adelante.</p>
+
+        <p id="config-msg" aria-live="polite" class="msg-slot"></p>
+        <button id="btn-guardar" class="btn btn-oro guardar-pegajoso" type="submit">Guardar cambios</button>
+      </form>
+    </section>
+
+    <section id="sec-diseno" class="pila oculto" aria-label="Diseño">
+      <h2 class="sr-solo">Diseño</h2>
+      <p class="ayuda">Cambia colores, letras e íconos de tus pantallas. Lo verás al momento; se queda al tocar «Guardar diseño».</p>
+
+      <div class="superficie vista-caja">
+        <p class="vista-titulo">Así se verá tu menú de caja</p>
+        <div id="dis-maqueta" class="maqueta" aria-hidden="true">
+          <span class="maq-item"><span id="dis-m-venta" class="maq-ico">🧾</span><span>Venta</span></span>
+          <span class="maq-item"><span id="dis-m-canje" class="maq-ico">🎁</span><span>Canje</span></span>
+          <span class="maq-item"><span id="dis-m-panel" class="maq-ico">📊</span><span>Panel</span></span>
+        </div>
+      </div>
+
+      <form id="form-diseno" class="pila" novalidate>
+        <details class="grupo" open>
+          <summary>Apariencia</summary>
+          <div class="divisor" aria-hidden="true"><i></i></div>
+
+          <label for="f-tipo">Tipo de negocio</label>
+          <input id="f-tipo" class="campo-c" type="text" maxlength="30" autocomplete="off" placeholder="Cafetería">
+
+          <div class="foto-fila" role="group" aria-label="Foto de perfil">
+            <img id="foto-avatar" class="foto-avatar" src="../img/logo.png" alt="Logo del negocio" width="96" height="96">
+            <div class="foto-botones">
+              <button id="btn-subir-foto" class="btn btn-claro btn-chico" type="button">Subir foto</button>
+              <button id="btn-quitar-foto" class="btn btn-claro btn-chico" type="button">Quitar foto</button>
+            </div>
+          </div>
+          <input id="foto-archivo" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+
+          <label for="f-logo">Logo (o pega un enlace)</label>
+          <input id="f-logo" class="campo-c" type="text" maxlength="300" autocomplete="off" placeholder="https://…" aria-describedby="f-logo-ayuda">
+          <p id="f-logo-ayuda" class="ayuda">Sube una foto o pega un enlace https://… de tu logo. Vacío = logo de Quetzalitos.</p>
+
+          <label for="f-color">Color de acento</label>
+          <div class="fila-color">
+            <input id="f-color" type="color" value="#1fb67a">
+            <button id="btn-quitar-color" class="btn btn-claro btn-chico" type="button">Quitar color</button>
+          </div>
+        </details>
+
+        <details class="grupo">
+          <summary>Colores</summary>
+          <div class="divisor" aria-hidden="true"><i></i></div>
+          <div id="dis-estilos" class="chips" role="group" aria-label="Estilos listos"></div>
+
+          <label for="dis-acento">Color principal</label>
+          <div class="fila-color">
+            <input id="dis-acento" type="color" value="#e4007c">
+            <button id="dis-acento-orig" class="btn btn-claro btn-chico" type="button">Usar original</button>
+          </div>
+
+          <label for="dis-acento2">Color secundario</label>
+          <div class="fila-color">
+            <input id="dis-acento2" type="color" value="#1f5bd6">
+            <button id="dis-acento2-orig" class="btn btn-claro btn-chico" type="button">Usar original</button>
+          </div>
+
+          <label for="dis-fondo">Color de fondo</label>
+          <div class="fila-color">
+            <input id="dis-fondo" type="color" value="#0a2e22">
+            <button id="dis-fondo-orig" class="btn btn-claro btn-chico" type="button">Usar original</button>
+          </div>
+        </details>
+
+        <details class="grupo">
+          <summary>Letras</summary>
+          <div class="divisor" aria-hidden="true"><i></i></div>
+          <label for="dis-fuente-titulo">Letra de títulos</label>
+          <select id="dis-fuente-titulo" class="campo-c"></select>
+          <label for="dis-fuente-texto">Letra de textos</label>
+          <select id="dis-fuente-texto" class="campo-c"></select>
+        </details>
+
+        <details class="grupo">
+          <summary>Íconos e imagen</summary>
+          <div class="divisor" aria-hidden="true"><i></i></div>
+          <label for="dis-emoji-venta">Ícono de «Generar QR por venta»</label>
+          <input id="dis-emoji-venta" class="campo-c" type="text" maxlength="8" autocomplete="off">
+          <div id="sug-venta" class="sugerencias"></div>
+
+          <label for="dis-emoji-canje">Ícono de «Canjear premio»</label>
+          <input id="dis-emoji-canje" class="campo-c" type="text" maxlength="8" autocomplete="off">
+          <div id="sug-canje" class="sugerencias"></div>
+
+          <label for="dis-emoji-panel">Ícono de «Panel administrativo»</label>
+          <input id="dis-emoji-panel" class="campo-c" type="text" maxlength="8" autocomplete="off">
+          <div id="sug-panel" class="sugerencias"></div>
+
+          <label for="dis-fondo-img">Imagen de fondo</label>
+          <input id="dis-fondo-img" class="campo-c" type="text" maxlength="300" autocomplete="off" placeholder="https://…" aria-describedby="dis-fondo-ayuda">
+          <div class="fondo-fila">
+            <img id="dis-fondo-miniatura" class="fondo-miniatura oculto" alt="Imagen de fondo actual" width="72" height="96">
+            <div class="foto-botones">
+              <button id="btn-subir-fondo" class="btn btn-claro btn-chico" type="button">Subir foto de fondo</button>
+              <button id="btn-quitar-fondo" class="btn btn-claro btn-chico" type="button">Quitar</button>
+            </div>
+          </div>
+          <p id="dis-fondo-ayuda" class="ayuda">Pega el enlace de una imagen (https://…) o sube una foto. Se verá tenue detrás de tus pantallas.</p>
+        </details>
+
+        <p id="diseno-msg" aria-live="polite" class="msg-slot"></p>
+        <button id="btn-guardar-diseno" class="btn btn-oro guardar-pegajoso" type="submit">Guardar diseño</button>
+        <button id="btn-restablecer" class="btn btn-peligro" type="button">Restablecer</button>
+      </form>
+    </section>
+
+  </section>
+
+  <footer class="pie"><div class="greca"></div></footer>
+</main>
+
+<div id="editor-foto" class="editor-foto oculto" role="dialog" aria-modal="true" aria-labelledby="editor-titulo">
+  <div class="superficie editor-caja">
+    <h3 id="editor-titulo">Ajusta tu foto</h3>
+    <div class="editor-lienzo">
+      <canvas id="editor-canvas" width="280" height="280" role="img" aria-label="Vista previa de la foto; arrástrala para moverla"></canvas>
+      <span class="editor-mascara" aria-hidden="true"></span>
+    </div>
+    <div class="editor-zoom">
+      <label for="editor-zoom">Zoom (de ajustar a 3×)</label>
+      <input id="editor-zoom" type="range" min="1" max="3" step="0.01" value="1">
+    </div>
+    <button id="editor-girar" class="btn btn-claro" type="button">Girar 90°</button>
+    <p id="editor-msg" aria-live="polite" class="msg-slot"></p>
+    <div class="editor-acciones">
+      <button id="editor-cancelar" class="btn btn-claro" type="button">Cancelar</button>
+      <button id="editor-usar" class="btn btn-oro" type="button">Usar foto</button>
+    </div>
+  </div>
+</div>
+
+<nav id="nav" class="nav-flotante oculto" aria-label="Secciones del panel">
+  <button id="nav-resumen" class="nav-item" type="button" data-sec="resumen">
+    <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>
+    <span>Resumen</span>
+  </button>
+  <button id="nav-tarjeta" class="nav-item" type="button" data-sec="tarjeta">
+    <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18"/></svg>
+    <span>Mi tarjeta</span>
+  </button>
+  <button id="nav-diseno" class="nav-item" type="button" data-sec="diseno">
+    <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2z"/></svg>
+    <span>Diseño</span>
+  </button>
+  <button id="nav-caja" class="nav-item" type="button">
+    <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6l-6 6 6 6M4 12h16"/></svg>
+    <span>Volver</span>
+  </button>
+</nav>
+
+<script src="../config.js?v=10"></script>
+<script src="../lib.js?v=10"></script>
+<script src="negocio.js?v=12"></script>
+</body>
+</html>

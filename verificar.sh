@@ -13,7 +13,7 @@ cname=$(dig +short CNAME "$D" | head -1)
   || falta "falta el CNAME «lealtad» → fershopool.github.io en Cloudflare (Proxy: DNS only)"
 
 echo "2) Páginas por HTTPS"
-for p in "" caja/ c/ panel/ mostrador/; do
+for p in "" caja/ c/ panel/ negocio/ mostrador/; do
   code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "https://$D/$p")
   [ "$code" = "200" ] && ok "https://$D/$p" || falta "https://$D/$p responde «$code» (000 = aún sin DNS o sin certificado)"
 done

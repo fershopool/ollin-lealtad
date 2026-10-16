@@ -5,18 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
   <meta name="theme-color" content="#06241B">
-  <title>Tu tarjeta Quetzalitos</title>
+  <title>Tu tarjeta de sellos</title>
   <link rel="icon" type="image/png" href="../img/icono.png">
   <link rel="apple-touch-icon" href="../img/icono.png">
-  <link rel="stylesheet" href="../fonts/fonts.css">
-  <link rel="stylesheet" href="../estilo.css">
+  <link rel="stylesheet" href="../fonts/fonts.css?v=10">
+  <link rel="stylesheet" href="../estilo.css?v=10">
+  <link rel="stylesheet" href="c.css?v=10">
 </head>
 <body>
 <main>
   <header class="cabecera"><div class="greca"></div></header>
 
-  <div class="logo-halo"><img src="../img/logo.png" alt="Quetzalitos" width="476" height="478"></div>
-  <h1 class="centro">Tu tarjeta de sellos</h1>
+  <div class="logo-halo"><img id="logo" src="../img/logo.png" alt="" width="476" height="478"></div>
+  <h1 id="titulo" class="centro">Tu tarjeta de sellos</h1>
+  <div class="divisor" aria-hidden="true"><i></i></div>
 
   <p id="estado" aria-live="polite" class="oculto"></p>
   <button id="btn-reintentar" class="btn btn-claro oculto" type="button">Reintentar</button>
@@ -24,15 +26,17 @@
   <section id="sin-tarjeta" class="marco centro">
     <p class="rotulo">Bienvenido</p>
     <h2>Escanea el QR que te muestran en caja</h2>
-    <p>Cuando compres tu postre, empieza a juntar sellos.</p>
+    <p>Cuando compres, empieza a juntar sellos.</p>
   </section>
 
   <section id="tarjeta" class="marco oculto">
+    <div id="programas" class="oculto"></div>
     <p class="rotulo">Tu tarjeta</p>
     <div id="sellos" class="sellos"></div>
     <p id="texto" class="centro" aria-live="polite"></p>
+    <p id="mensaje" class="letra-chica oculto"></p>
 
-    <button id="btn-premio" class="btn btn-oro btn-premio oculto" type="button">Canjear mi postre gratis</button>
+    <button id="btn-premio" class="btn btn-oro btn-premio oculto" type="button">Canjear mi premio</button>
 
     <div id="bloque-canje" class="placa oculto">
       <p class="centro">Díselo al personal de caja</p>
@@ -46,11 +50,14 @@
     Tu tarjeta vive en este teléfono. No pedimos nombre, correo ni otros datos personales.
   </p>
 
-  <footer class="pie"><div class="greca"></div></footer>
+  <footer class="pie">
+    <p class="firma">Fidelización Tlatolli · Desarrollado por <span class="ollin">OLLIN</span></p>
+    <div class="greca"></div>
+  </footer>
 </main>
 
-<script src="../config.js"></script>
-<script src="../lib.js"></script>
-<script src="c.js"></script>
+<script src="../config.js?v=10"></script>
+<script src="../lib.js?v=10"></script>
+<script src="c.js?v=10"></script>
 </body>
 </html>

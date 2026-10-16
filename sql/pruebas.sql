@@ -29,7 +29,7 @@ end $$;
 
 create function pg_temp.nueva_venta(p_pin text)
 returns text language plpgsql as $$
-declare r json := public.crear_venta(p_pin);
+declare r json := public.crear_venta(p_pin, true);
 begin
   perform pg_temp.debe_ok(r, 'crear_venta con PIN ' || p_pin || ' debe ser ok');
   return r->>'codigo';
@@ -115,11 +115,11 @@ insert into public.config (clave, valor) values
   ('admin_hash', extensions.crypt('admin-prueba', extensions.gen_salt('bf')))
 on conflict (clave) do update set valor = excluded.valor;
 
-insert into public.cafeterias (id, nombre, escuela, slug, pin_hash, lat, lng, activa, tope_hora) values
+insert into public.cafeterias (id, nombre, escuela, slug, pin_hash, lat, lng, activa, tope_hora, distribuidor) values
   ('00000000-0000-0000-0000-00000000000a', 'Cafe A', 'Escuela Uno', 'cafe-a',
-   extensions.crypt('111111', extensions.gen_salt('bf')), 19.43, -99.13, true, 30),
+   extensions.crypt('111111', extensions.gen_salt('bf')), 19.43, -99.13, true, 30, true),
   ('00000000-0000-0000-0000-00000000000b', 'Cafe B', 'Escuela Dos', 'cafe-b',
-   extensions.crypt('222222', extensions.gen_salt('bf')), 19.44, -99.14, true, 30);
+   extensions.crypt('222222', extensions.gen_salt('bf')), 19.44, -99.14, true, 30, true);
 
 -- ============ a) Un token sirve una sola vez ============
 select set_config('qz.c1', pg_temp.nueva_venta('111111'), true);
@@ -308,7 +308,9 @@ select pg_temp.debe_err(public.crear_cafeteria('admin-prueba', '  ', 'Escuela N'
 select pg_temp.debe_err(public.crear_cafeteria('admin-prueba', 'X', 'Escuela N', '555000'), 'datos_invalidos', 'n: nombre de una letra');
 select pg_temp.debe_err(public.crear_cafeteria('admin-prueba', null, 'Escuela N', '555000'), 'datos_invalidos', 'n: nombre nulo');
 select pg_temp.debe_err(public.crear_cafeteria('admin-prueba', repeat('x', 81), 'Escuela N', '555000'), 'datos_invalidos', 'n: nombre de mas de 80');
-select pg_temp.debe_err(public.crear_cafeteria('admin-prueba', 'Cafe N', '', '555000'), 'datos_invalidos', 'n: escuela vacia');
+select pg_temp.debe_ok(public.crear_cafeteria('admin-prueba', 'Cafe Sin Escuela', '', '555999'), 'n: la escuela es opcional');
+select pg_temp.chk((select slug from public.cafeterias where nombre = 'Cafe Sin Escuela') = 'cafe-sin-escuela', 'n: el slug sin escuela no lleva guion final');
+select pg_temp.debe_ok(public.eliminar_cafeteria('admin-prueba', 'cafe-sin-escuela'), 'n: limpiar la cafeteria sin escuela');
 select pg_temp.debe_err(public.crear_cafeteria('admin-prueba', 'Cafe N', repeat('x', 41), '555000'), 'datos_invalidos', 'n: escuela de mas de 40');
 select pg_temp.debe_err(public.crear_cafeteria('admin-prueba', 'Cafe N', 'Escuela N', '12345'), 'pin_formato', 'n: PIN de 5 digitos');
 select pg_temp.debe_err(public.crear_cafeteria('admin-prueba', 'Cafe N', 'Escuela N', '1234567'), 'pin_formato', 'n: PIN de 7 digitos');
@@ -420,14 +422,15 @@ select pg_temp.chk((select count(*) from public.fallos_pin) = current_setting('q
 select pg_temp.debe_err(public.editar_cafeteria('admin-prueba', 'cafe-ed-1-escuela-p', p_nombre => '   '), 'datos_invalidos', 'p: nombre vacio');
 select pg_temp.debe_err(public.editar_cafeteria('admin-prueba', 'cafe-ed-1-escuela-p', p_nombre => 'X'), 'datos_invalidos', 'p: nombre de una letra');
 select pg_temp.debe_err(public.editar_cafeteria('admin-prueba', 'cafe-ed-1-escuela-p', p_nombre => repeat('x', 81)), 'datos_invalidos', 'p: nombre de mas de 80');
-select pg_temp.debe_err(public.editar_cafeteria('admin-prueba', 'cafe-ed-1-escuela-p', p_escuela => ''), 'datos_invalidos', 'p: escuela vacia');
+select pg_temp.debe_ok(public.editar_cafeteria('admin-prueba', 'cafe-ed-1-escuela-p', p_escuela => ''), 'p: se puede quitar la escuela');
+select pg_temp.debe_ok(public.editar_cafeteria('admin-prueba', 'cafe-ed-1-escuela-p', p_escuela => 'Escuela P'), 'p: y volver a ponerla');
 select pg_temp.debe_err(public.editar_cafeteria('admin-prueba', 'cafe-ed-1-escuela-p', p_escuela => repeat('x', 41)), 'datos_invalidos', 'p: escuela de mas de 40');
 
 -- Atomicidad: nombre valido + PIN invalido no cambia el nombre.
 select pg_temp.debe_err(public.editar_cafeteria('admin-prueba', 'cafe-ed-1-escuela-p', p_nombre => 'Nombre Atomico', p_pin => '12345'), 'pin_formato', 'p: atomicidad, PIN invalido');
 select pg_temp.chk((select nombre from public.cafeterias where slug = 'cafe-ed-1-escuela-p') = 'Cafe Ed 1', 'p: atomicidad: un PIN invalido no cambia el nombre valido');
 -- Atomicidad: tope valido + activa false + escuela invalida no cambia nada.
-select pg_temp.debe_err(public.editar_cafeteria('admin-prueba', 'cafe-ed-1-escuela-p', p_escuela => '', p_activa => false, p_tope_hora => 5), 'datos_invalidos', 'p: atomicidad, escuela invalida');
+select pg_temp.debe_err(public.editar_cafeteria('admin-prueba', 'cafe-ed-1-escuela-p', p_escuela => repeat('x', 41), p_activa => false, p_tope_hora => 5), 'datos_invalidos', 'p: atomicidad, escuela invalida');
 select pg_temp.chk((select activa and tope_hora = 30 and escuela = 'Escuela P' from public.cafeterias where slug = 'cafe-ed-1-escuela-p'),
   'p: atomicidad: ni tope, ni activa, ni escuela cambian si otro dato es invalido');
 
@@ -468,6 +471,139 @@ select pg_temp.debe_err(public.crear_venta('700006'), 'pin_invalido', 'p: cafete
 select pg_temp.debe_ok(public.editar_cafeteria('admin-prueba', 'cafe-ed-1-escuela-p', p_activa => true), 'p: reactivar la cafeteria');
 select pg_temp.debe_ok(public.entrar('700006'), 'p: al reactivar vuelve a entrar');
 
+-- Personalización: tipo y logo salen en entrar; el valor por defecto es «Cafetería» sin logo.
+select pg_temp.chk(public.entrar('700006')->>'tipo' = 'Cafetería' and public.entrar('700006')->'logo' is not null
+  and (public.entrar('700006')->>'logo') is null, 'q: por defecto tipo=Cafetería y logo nulo');
+update public.cafeterias set tipo = 'Bar', logo = 'img/negocios/x.png' where slug = 'cafe-ed-1-escuela-p';
+select pg_temp.chk(public.entrar('700006')->>'tipo' = 'Bar' and public.entrar('700006')->>'logo' = 'img/negocios/x.png', 'q: entrar devuelve tipo y logo');
+-- mis_metricas: solo con el PIN del propio negocio, sin la clave admin.
+select pg_temp.debe_ok(public.mis_metricas('700006', 7), 'q: mis_metricas con PIN valido');
+select pg_temp.chk((public.mis_metricas('700006')->>'cafeteria') = 'Cafe Ed Uno' and (public.mis_metricas('700006')->>'ventas')::int = 0, 'q: mis_metricas devuelve su nombre y conteos');
+select pg_temp.debe_err(public.mis_metricas('999999'), 'pin_invalido', 'q: mis_metricas con PIN malo');
+
+-- ============ r) Programas propios, distribuidor, configuración y cuenta de control ============
+select pg_temp.debe_err(public.crear_venta('700006', true), 'no_distribuidor', 'r: sin ser distribuidor no genera QR Quetzalitos');
+select set_config('qz.rp', (select id::text from public.cafeterias where slug = 'cafe-ed-1-escuela-p'), true);
+select set_config('qz.r1', public.crear_venta('700006')::text, true);
+select pg_temp.chk(current_setting('qz.r1')::json->>'programa' = current_setting('qz.rp'), 'r: el QR por defecto es del programa propio');
+select set_config('qz.rt', pg_temp.reclamar_ok(current_setting('qz.r1')::json->>'codigo', null, 'r: reclamo del programa propio'), true);
+select pg_temp.chk((public.tarjeta(current_setting('qz.rt')::uuid, current_setting('qz.rp'))->>'sellos')::int = 1, 'r: el sello cuenta en el programa propio');
+select pg_temp.chk((public.tarjeta(current_setting('qz.rt')::uuid)->>'sellos')::int = 0, 'r: y no cuenta en Quetzalitos');
+select pg_temp.chk(public.tarjeta(current_setting('qz.rt')::uuid, current_setting('qz.rp'))->'config'->>'nombre' = 'Cafe Ed Uno', 'r: la tarjeta trae la config del negocio');
+select pg_temp.debe_err(public.tarjeta(current_setting('qz.rt')::uuid, '00000000-0000-0000-0000-0000000000ff'), 'tarjeta_invalida', 'r: un programa que no existe');
+
+-- El enfriamiento de 10 minutos es por programa.
+select pg_temp.debe_ok(public.set_distribuidor('admin-prueba', 'cafe-ed-1-escuela-p', true), 'r: activar distribuidor');
+select pg_temp.debe_ok(public.reclamar(public.crear_venta('700006', true)->>'codigo', current_setting('qz.rt')::uuid), 'r: sello Quetzalitos justo despues del propio');
+select pg_temp.debe_err(public.reclamar(public.crear_venta('700006')->>'codigo', current_setting('qz.rt')::uuid), 'sello_reciente', 'r: dos sellos propios seguidos');
+select pg_temp.chk((public.tarjeta(current_setting('qz.rt')::uuid)->>'sellos')::int = 1, 'r: Quetzalitos suma aparte');
+
+-- guardar_config: valida todo antes de escribir.
+select pg_temp.debe_err(public.guardar_config('700006', p_color => 'rojo'), 'config_invalida', 'r: color invalido');
+select pg_temp.debe_err(public.guardar_config('700006', p_meta => 0), 'config_invalida', 'r: meta 0');
+select pg_temp.debe_err(public.guardar_config('700006', p_meta => 51), 'config_invalida', 'r: meta 51');
+select pg_temp.debe_err(public.guardar_config('700006', p_logo => 'javascript:alert(1)'), 'config_invalida', 'r: logo javascript:');
+select pg_temp.debe_err(public.guardar_config('700006', p_logo => 'https://a.com/x.png"onerror='), 'config_invalida', 'r: logo con comillas');
+select pg_temp.debe_err(public.guardar_config('700006', p_premio => ''), 'config_invalida', 'r: premio vacio');
+select pg_temp.chk((public.entrar('700006')->>'meta')::int = 6, 'r: un intento invalido no cambia nada');
+select pg_temp.debe_err(public.guardar_config('999999', p_meta => 3), 'pin_invalido', 'r: guardar_config con PIN malo');
+select pg_temp.debe_ok(public.guardar_config('700006', p_meta => 2, p_premio => '  Un café   gratis ', p_unidad => 'visitas',
+  p_mensaje => 'Gracias', p_color => '#1F5BD6', p_logo => 'https://ejemplo.com/logo.png'), 'r: guardar la config');
+select pg_temp.chk(public.entrar('700006')->>'premio' = 'Un café gratis' and public.entrar('700006')->>'unidad' = 'visitas'
+  and public.entrar('700006')->>'color' = '#1F5BD6' and (public.entrar('700006')->>'meta')::int = 2, 'r: entrar devuelve la config guardada');
+select pg_temp.debe_ok(public.guardar_config('700006', p_logo => '', p_mensaje => '', p_color => ''), 'r: vaciar logo, mensaje y color');
+select pg_temp.chk(public.entrar('700006')->>'logo' is null and public.entrar('700006')->>'color' is null, 'r: logo y color vacios quedan en null');
+
+-- Premio propio con meta 2: solo lo canjea su dueño y cambiar la meta después no altera el saldo.
+update public.sellos set creado_en = now() - interval '11 minutes' where tarjeta_id = current_setting('qz.rt')::uuid;
+select pg_temp.debe_ok(public.reclamar(public.crear_venta('700006')->>'codigo', current_setting('qz.rt')::uuid), 'r: segundo sello propio');
+select pg_temp.chk((public.tarjeta(current_setting('qz.rt')::uuid, current_setting('qz.rp'))->>'premio_listo')::boolean, 'r: con meta 2 el premio propio esta listo');
+select set_config('qz.rc', public.pedir_canje(current_setting('qz.rt')::uuid, current_setting('qz.rp'))::text, true);
+select pg_temp.chk(current_setting('qz.rc')::json->>'ok' = 'true', 'r: pedir_canje del programa propio | ' || current_setting('qz.rc'));
+select pg_temp.debe_err(public.canjear('700006', 'xxxxxx'), 'canje_invalido', 'r: codigo de canje inexistente');
+select pg_temp.debe_err(public.canjear('700004', current_setting('qz.rc')::json->>'codigo'), 'canje_invalido', 'r: otro negocio no canjea un premio propio ajeno');
+select set_config('qz.rk', public.canjear('700006', current_setting('qz.rc')::json->>'codigo')::text, true);
+select pg_temp.chk(current_setting('qz.rk')::json->>'ok' = 'true' and current_setting('qz.rk')::json->>'premio' = 'Un café gratis', 'r: el dueño canjea y recibe el premio | ' || current_setting('qz.rk'));
+select pg_temp.chk((public.tarjeta(current_setting('qz.rt')::uuid, current_setting('qz.rp'))->>'sellos')::int = 0, 'r: tras el canje el saldo propio queda en 0');
+select pg_temp.debe_ok(public.guardar_config('700006', p_meta => 5), 'r: subir la meta despues del canje');
+select pg_temp.chk((public.tarjeta(current_setting('qz.rt')::uuid, current_setting('qz.rp'))->>'sellos')::int = 0, 'r: cambiar la meta no vuelve negativo el saldo');
+
+-- Un premio Quetzalitos solo lo canjea un distribuidor.
+insert into public.canjes (tarjeta_id, codigo, programa, meta) values (current_setting('qz.rt')::uuid, '424242', 'q', 6);
+select pg_temp.debe_ok(public.set_distribuidor('admin-prueba', 'cafe-ed-1-escuela-p', false), 'r: quitar distribuidor');
+select pg_temp.debe_err(public.canjear('700006', '424242'), 'no_distribuidor', 'r: sin ser distribuidor no canjea premios Quetzalitos');
+select pg_temp.debe_err(public.crear_venta('700006', true), 'no_distribuidor', 'r: sin ser distribuidor ya no genera QR Quetzalitos');
+delete from public.canjes where codigo = '424242';
+select pg_temp.debe_err(public.set_distribuidor('mala', 'cafe-a', true), 'clave_invalida', 'r: set_distribuidor con clave mala');
+select pg_temp.debe_err(public.set_distribuidor('admin-prueba', 'no-hay', true), 'no_existe', 'r: set_distribuidor de una cafeteria inexistente');
+
+-- guardar_tema: lista cerrada, valida todo y reemplaza el tema entero.
+select pg_temp.debe_ok(public.guardar_tema('700006', '{"acento":"#E4007C","fondo":"#0A2E22","fuente_titulo":"georgia","emoji_venta":"🍺","fondo_img":"https://ejemplo.com/f.jpg","emoji_canje":""}'::json), 's: guardar tema valido');
+select pg_temp.chk(public.entrar('700006')->'tema'->>'acento' = '#E4007C' and public.entrar('700006')->'tema'->>'emoji_venta' = '🍺'
+  and not ((public.entrar('700006')->'tema')::jsonb ? 'emoji_canje'), 's: entrar devuelve el tema y omite lo vacio');
+select pg_temp.debe_err(public.guardar_tema('700006', '{"acento":"rojo"}'::json), 'tema_invalido', 's: color invalido');
+select pg_temp.debe_err(public.guardar_tema('700006', '{"fuente_texto":"comic"}'::json), 'tema_invalido', 's: fuente fuera de la lista');
+select pg_temp.debe_err(public.guardar_tema('700006', '{"otra":"x"}'::json), 'tema_invalido', 's: clave desconocida');
+select pg_temp.debe_err(public.guardar_tema('700006', '{"emoji_venta":"<b>"}'::json), 'tema_invalido', 's: emoji con marcado');
+select pg_temp.debe_err(public.guardar_tema('700006', '{"fondo_img":"javascript:alert(1)"}'::json), 'tema_invalido', 's: imagen javascript:');
+select pg_temp.debe_err(public.guardar_tema('700006', '{"fondo_img":"https://a.com/x.png\")"}'::json), 'tema_invalido', 's: imagen con comillas o parentesis');
+select pg_temp.debe_err(public.guardar_tema('700006', '[1]'::json), 'tema_invalido', 's: el tema debe ser un objeto');
+select pg_temp.debe_err(public.guardar_tema('700006', '{"acento":5}'::json), 'tema_invalido', 's: valores que no son texto');
+select pg_temp.chk(public.entrar('700006')->'tema'->>'acento' = '#E4007C', 's: un tema invalido no cambia el guardado');
+select pg_temp.debe_err(public.guardar_tema('999999', '{}'::json), 'pin_invalido', 's: guardar_tema con PIN malo');
+select pg_temp.debe_ok(public.guardar_tema('700006', '{}'::json), 's: restablecer el tema');
+select pg_temp.chk(public.entrar('700006')->'tema' is null or (public.entrar('700006')->>'tema') is null, 's: tema restablecido en null');
+
+-- t) Cancelar venta y foto de perfil.
+select set_config('qz.tv', public.crear_venta('700006')::text, true);
+select pg_temp.chk(public.mis_metricas('700006')->>'ventas' is not null, 't: base');
+select set_config('qz.tn', (public.mis_metricas('700006')->>'ventas'), true);
+select pg_temp.debe_ok(public.cancelar_venta('700006', current_setting('qz.tv')::json->>'codigo'), 't: cancelar una venta sin escanear');
+select pg_temp.debe_ok(public.cancelar_venta('700006', current_setting('qz.tv')::json->>'codigo'), 't: cancelar dos veces es idempotente');
+select pg_temp.chk((public.mis_metricas('700006')->>'ventas') = (current_setting('qz.tn')::int - 1)::text, 't: la venta cancelada ya no cuenta');
+select pg_temp.debe_err(public.reclamar(current_setting('qz.tv')::json->>'codigo', null), 'token_cancelado', 't: un QR cancelado no se puede reclamar');
+select pg_temp.debe_err(public.cancelar_venta('700004', current_setting('qz.tv')::json->>'codigo'), 'token_invalido', 't: otro negocio no puede cancelar mi venta');
+select pg_temp.debe_err(public.cancelar_venta('999999', 'x'), 'pin_invalido', 't: cancelar con PIN malo');
+select set_config('qz.tu', public.crear_venta('700006')::json->>'codigo', true);
+select pg_temp.debe_ok(public.reclamar(current_setting('qz.tu'), null), 't: reclamo normal');
+select pg_temp.debe_err(public.cancelar_venta('700006', current_setting('qz.tu')), 'token_usado', 't: no se cancela un QR ya escaneado');
+select pg_temp.debe_ok(public.guardar_config('700006', p_logo => 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ=='), 't: foto de perfil como data URL');
+select pg_temp.chk(public.entrar('700006')->>'logo' like 'data:image/jpeg;base64,%', 't: entrar devuelve la foto');
+select pg_temp.debe_err(public.guardar_config('700006', p_logo => 'data:image/svg+xml;base64,PHN2Zz48L3N2Zz4='), 'config_invalida', 't: SVG no se acepta como foto');
+select pg_temp.debe_err(public.guardar_config('700006', p_logo => 'data:text/html;base64,PGI+'), 'config_invalida', 't: html no se acepta como foto');
+select pg_temp.debe_err(public.guardar_config('700006', p_logo => 'data:image/png;base64,' || repeat('A', 60000)), 'config_invalida', 't: foto demasiado grande');
+select pg_temp.debe_ok(public.guardar_config('700006', p_logo => ''), 't: quitar la foto');
+
+-- u) Configuración editable de Quetzalitos (solo con la clave admin) y fondo con foto.
+select pg_temp.debe_err(public.quetzalitos_config('mala'), 'clave_invalida', 'u: clave mala');
+select pg_temp.chk(public.quetzalitos_config('admin-prueba')->'config'->>'premio' = 'Un postre gratis', 'u: sin parametros devuelve lo vigente (premio por defecto)');
+select pg_temp.debe_err(public.quetzalitos_config('admin-prueba', p_meta => 0), 'config_invalida', 'u: meta 0');
+select pg_temp.debe_err(public.quetzalitos_config('admin-prueba', p_premio => ''), 'config_invalida', 'u: premio vacio');
+select pg_temp.debe_ok(public.quetzalitos_config('admin-prueba', p_meta => 8, p_premio => ' Un   postre de regalo ', p_unidad => 'quetzales', p_mensaje => 'Gracias'), 'u: guardar la config');
+select pg_temp.chk((public.tarjeta(current_setting('qz.rt')::uuid)->'config'->>'meta')::int = 8
+  and public.tarjeta(current_setting('qz.rt')::uuid)->'config'->>'premio' = 'Un postre de regalo'
+  and public.tarjeta(current_setting('qz.rt')::uuid)->'config'->>'unidad' = 'quetzales'
+  and public.tarjeta(current_setting('qz.rt')::uuid)->'config'->>'mensaje' = 'Gracias', 'u: la tarjeta Quetzalitos refleja la config');
+select pg_temp.debe_ok(public.quetzalitos_config('admin-prueba', p_mensaje => ''), 'u: borrar el mensaje');
+select pg_temp.chk((public.tarjeta(current_setting('qz.rt')::uuid)->'config'->>'mensaje') is null, 'u: mensaje borrado');
+select pg_temp.debe_ok(public.quetzalitos_config('admin-prueba', p_meta => 6, p_premio => 'Un postre gratis', p_unidad => 'sellos'), 'u: restaurar valores originales');
+select pg_temp.debe_ok(public.guardar_tema('700006', json_build_object('fondo_img', 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQ==')), 'u: fondo con foto');
+select pg_temp.debe_err(public.guardar_tema('700006', json_build_object('fondo_img', 'data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=')), 'tema_invalido', 'u: el fondo no acepta SVG');
+select pg_temp.debe_err(public.guardar_tema('700006', json_build_object('fondo_img', 'data:image/png;base64,' || repeat('A', 150000))), 'tema_invalido', 'u: fondo demasiado grande');
+select pg_temp.debe_ok(public.guardar_tema('700006', '{}'::json), 'u: limpiar el tema');
+
+-- Cuenta de control: entra como una cafeteria, marca admin y no sale en métricas ni se puede volver distribuidor.
+select pg_temp.debe_ok(public.crear_cafeteria('admin-prueba', 'Control Quetzalitos', 'Quetzalitos', '800001'), 'r: alta de la cuenta de control');
+update public.cafeterias set super_admin = true where slug = 'control-quetzalitos-quetzalitos';
+select pg_temp.chk(public.entrar('800001')->>'admin' = 'true' and public.entrar('700006')->>'admin' = 'false', 'r: entrar marca solo la cuenta de control');
+select pg_temp.chk(not exists (select 1 from json_array_elements(public.metricas('admin-prueba')->'filas') f
+  where f->>'slug' = 'control-quetzalitos-quetzalitos'), 'r: la cuenta de control no sale en metricas');
+select pg_temp.debe_err(public.set_distribuidor('admin-prueba', 'control-quetzalitos-quetzalitos', true), 'no_existe', 'r: la cuenta de control no es distribuidora');
+select pg_temp.debe_err(public.crear_venta('800001'), 'pin_invalido', 'r: la cuenta de control no genera QR');
+select pg_temp.debe_err(public.canjear('800001', '123456'), 'pin_invalido', 'r: la cuenta de control no canjea');
+select pg_temp.debe_err(public.guardar_tema('800001', '{}'::json), 'pin_invalido', 'r: la cuenta de control no edita tema');
+select pg_temp.chk(public.entrar('800001')->>'admin' = 'true', 'r: la cuenta de control si entra');
+
 -- Tope por hora: 0, -5 y 1001 son invalidos; 1 y 1000 son validos y quedan guardados.
 select pg_temp.debe_err(public.editar_cafeteria('admin-prueba', 'cafe-ed-1-escuela-p', p_tope_hora => 0), 'tope_invalido', 'p: tope 0');
 select pg_temp.debe_err(public.editar_cafeteria('admin-prueba', 'cafe-ed-1-escuela-p', p_tope_hora => -5), 'tope_invalido', 'p: tope -5');
@@ -485,6 +621,7 @@ select pg_temp.chk(current_setting('qz.anon_edit') = 'true', 'p: anon debe poder
 select pg_temp.chk((select nombre from public.cafeterias where slug = 'cafe-ed-2-escuela-p') = 'Cafe Ed Anon', 'p: la edicion hecha por anon se guarda');
 
 -- Renombrar conserva el slug y el historial: la venta sigue contada bajo el nombre nuevo.
+select pg_temp.debe_ok(public.set_distribuidor('admin-prueba', 'cafe-ed-4-escuela-p', true), 'p: activar distribuidor para la venta de prueba');
 select pg_temp.nueva_venta('700004');
 select set_config('qz.e4', public.editar_cafeteria('admin-prueba', 'cafe-ed-4-escuela-p', p_nombre => 'Cafe Renombrada')::text, true);
 select pg_temp.chk(current_setting('qz.e4')::json->>'slug' = 'cafe-ed-4-escuela-p' and current_setting('qz.e4')::json->>'cafeteria' = 'Cafe Renombrada',
