@@ -26,6 +26,8 @@
     config_invalida: "Revisa los datos de tu tarjeta: meta de 1 a 50, color como #1F5BD6, logo con https o ruta img/negocios/.",
     tema_invalido: "Revisa el diseño: colores como #1F5BD6, emojis de hasta 8 caracteres e imagen con https.",
     token_cancelado: "Esta venta fue cancelada. Pide un QR nuevo en caja.",
+    fecha_invalida: "Esa fecha o cantidad de meses no es válida (de 1 a 24 meses, o una fecha dentro de los próximos 5 años).",
+    rango_invalido: "El periodo no es válido: la fecha final no puede ser anterior a la inicial y el máximo es de 366 días.",
     red: "Sin conexión. Revisa tu internet e intenta de nuevo."
   };
   // Raíz del sitio = carpeta de lib.js; así las rutas de logo valen desde cualquier página.
@@ -125,6 +127,27 @@
       if (tipo) partes.push(tipo);
       if (escuela) partes.push(escuela);
       return partes.join(" · ");
+    },
+
+    // «12 oct 2026» a partir de 'AAAA-MM-DD' (fecha local, sin corrimiento de zona) o de una marca de tiempo ISO.
+    fecha: function (valor) {
+      if (!valor) return "";
+      var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(valor));
+      var d = m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(valor);
+      if (isNaN(d.getTime())) return "";
+      var meses = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+      return d.getDate() + " " + meses[d.getMonth()] + " " + d.getFullYear();
+    },
+
+    // Estado de una mensualidad según los días que faltan (null = sin seguimiento; negativo = vencida).
+    // → { estado: "sin" | "ok" | "pronto" | "vencida", texto }
+    vencimiento: function (dias) {
+      if (dias === null || dias === undefined) return { estado: "sin", texto: "Sin cobro" };
+      if (dias < 0) return { estado: "vencida", texto: dias === -1 ? "Venció ayer" : "Venció hace " + (-dias) + " días" };
+      if (dias === 0) return { estado: "pronto", texto: "Vence hoy" };
+      if (dias === 1) return { estado: "pronto", texto: "Vence mañana" };
+      if (dias <= 3) return { estado: "pronto", texto: "Vence en " + dias + " días" };
+      return { estado: "ok", texto: "Al corriente · " + dias + " días" };
     },
 
     // Fuentes disponibles para el tema (clave → nombre), en el orden del selector.

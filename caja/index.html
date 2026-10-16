@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="../img/icono.png">
   <link rel="stylesheet" href="../fonts/fonts.css?v=10">
   <link rel="stylesheet" href="../estilo.css?v=10">
-  <link rel="stylesheet" href="caja.css?v=10">
+  <link rel="stylesheet" href="caja.css?v=14">
 </head>
 <body class="caja">
 <main>
@@ -82,9 +82,18 @@
   <footer class="pie"><div class="greca"></div></footer>
 </main>
 
+<div id="aviso" class="aviso oculto" role="status" aria-live="polite">
+  <span class="aviso-ico" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></span>
+  <div class="aviso-txt">
+    <p id="aviso-titulo" class="aviso-titulo"></p>
+    <p id="aviso-sub" class="aviso-sub"></p>
+  </div>
+  <button id="btn-cerrar-aviso" class="aviso-cerrar" type="button" aria-label="Cerrar aviso">×</button>
+</div>
+
 <script src="../config.js?v=10"></script>
 <script src="../lib.js?v=10"></script>
 <script src="../vendor/qrcode.js"></script>
-<script src="caja.js?v=10"></script>
+<script src="caja.js?v=14"></script>
 </body>
 </html>

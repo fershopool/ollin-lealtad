@@ -1,0 +1,98 @@
+/* Gráficas SVG del panel del negocio (graficas.js). Solo variables de tema; prefijo gr-. */
+
+.gr-caja { position: relative; color: var(--hielo); font-family: var(--sans); min-width: 0; }
+.gr-svg { display: block; width: 100%; height: auto; overflow: visible; touch-action: pan-y; }
+
+/* Ejes, rejillas y etiquetas: sobrios */
+.gr-eje { stroke: var(--borde); stroke-width: 1; }
+.gr-rejilla { stroke: var(--borde); stroke-width: 1; stroke-dasharray: 2 4; }
+.gr-eje-txt { fill: var(--niebla); font-size: 11px; font-family: var(--sans); }
+.gr-etiqueta { fill: var(--niebla); font-size: 13px; font-weight: 600; font-family: var(--sans); }
+.gr-valor { fill: var(--hielo); font-size: 12px; font-weight: 700; font-family: var(--sans); pointer-events: none; }
+.gr-valor-h { fill: var(--hielo); font-size: 12px; font-weight: 700; font-family: var(--sans); pointer-events: none; }
+.gr-track { fill: var(--superficie-2); }
+
+/* Horas: barras con esquinas superiores redondeadas */
+.gr-barra-zona { outline: none; }
+.gr-zona { fill: transparent; pointer-events: all; }
+.gr-barra-zona:focus-visible .gr-zona { fill: var(--superficie-2); }
+.gr-barra-zona > *:not(.gr-zona) { pointer-events: none; }
+.gr-barra--tenue { opacity: .42; }
+.gr-barra--pico { opacity: 1; filter: drop-shadow(0 0 6px var(--naranja)) drop-shadow(0 0 2px var(--naranja-claro, var(--naranja))); }
+
+/* Semana: barras horizontales */
+.gr-h-tenue { fill: var(--esmeralda); opacity: .5; }
+.gr-badge { fill: var(--naranja); }
+.gr-badge-txt { fill: var(--selva); font-size: 10.5px; font-weight: 700; font-family: var(--sans); pointer-events: none; }
+
+/* Serie: área con dos curvas */
+.gr-linea { fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.gr-linea-oro { stroke: var(--naranja); }
+.gr-linea-jade { stroke: var(--esmeralda); }
+.gr-punto-unico-oro { fill: var(--naranja); }
+.gr-punto-unico-jade { fill: var(--esmeralda); }
+.gr-guia { stroke: var(--niebla); stroke-width: 1; stroke-dasharray: 3 3; opacity: .7; }
+.gr-hover { opacity: 0; transition: opacity .15s ease; pointer-events: none; }
+.gr-hover.on { opacity: 1; }
+.gr-hover-oro { fill: var(--naranja); stroke: var(--selva); stroke-width: 2; }
+.gr-hover-jade { fill: var(--esmeralda); stroke: var(--selva); stroke-width: 2; }
+
+/* Mezcla */
+.gr-seg-oro { fill: var(--naranja); }
+.gr-seg-jade { fill: var(--esmeralda); }
+.gr-mezcla-cifras { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; margin-top: 12px; font-size: .9rem; color: var(--niebla); }
+.gr-mezcla-cifras > div { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; align-items: center; min-width: 0; }
+.gr-mezcla-cifras strong { color: var(--hielo); font-weight: 700; overflow-wrap: anywhere; }
+.gr-mezcla-cifras span { grid-column: 2; }
+.gr-medidor { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--borde); }
+.gr-medidor-titulo { margin: 0 0 6px; font-size: .9rem; color: var(--niebla); }
+.gr-grande { font-family: var(--serif); font-size: 2.4rem; line-height: 1; color: var(--hielo); }
+.gr-grande small { font-family: var(--sans); font-size: 1rem; font-weight: 700; color: var(--naranja); margin-left: 8px; }
+.gr-medidor-barra { margin-top: 10px; height: 10px; }
+
+/* Embudo */
+.gr-emb-1 { fill: var(--esmeralda); }
+.gr-emb-2 { fill: var(--naranja); }
+.gr-emb-3 { fill: var(--rosa); }
+.gr-chev { fill: none; stroke: var(--niebla); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.gr-conv { fill: var(--naranja); font-size: 12px; font-weight: 700; font-family: var(--sans); }
+
+/* Leyendas */
+.gr-leyenda { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin-top: 10px; font-size: .85rem; color: var(--niebla); }
+.gr-leyenda > span { display: inline-flex; align-items: center; gap: 6px; }
+.gr-punto { display: inline-block; flex: 0 0 auto; width: 10px; height: 10px; border-radius: 50%; background: var(--naranja); }
+.gr-punto--jade { background: var(--esmeralda); }
+
+/* Tooltip: dentro del contenedor, sin salirse de sus bordes */
+.gr-tip {
+  position: absolute; left: 0; top: 0; z-index: 2; display: flex; flex-direction: column; gap: 2px;
+  max-width: calc(100% - 8px); padding: 6px 10px; border-radius: 10px;
+  background: var(--selva); border: 1px solid var(--borde); color: var(--hielo);
+  font-size: .8rem; line-height: 1.25; white-space: nowrap; box-shadow: var(--sombra-card, none);
+  opacity: 0; pointer-events: none; transition: opacity .15s ease;
+}
+.gr-tip.on { opacity: 1; }
+
+/* Estado vacío */
+.gr-vacio { padding: 22px 12px; text-align: center; color: var(--niebla); font-family: var(--serif); font-style: italic; font-size: 1rem; }
+.gr-rombo { display: block; width: 10px; height: 10px; margin: 0 auto 10px; border: 1.5px solid var(--naranja); border-radius: 2px; transform: rotate(45deg); }
+
+/* Animación de entrada: barras que crecen (solo si el contenedor tiene .grafica-anima) */
+.grafica-anima .gr-barra {
+  transform-box: fill-box; transform-origin: 50% 100%;
+  animation: gr-crece-y 600ms cubic-bezier(.2, .7, .2, 1) both;
+  animation-delay: var(--retraso, 0ms);
+}
+.grafica-anima .gr-barra-h {
+  transform-box: fill-box; transform-origin: 0 50%;
+  animation: gr-crece-x 600ms cubic-bezier(.2, .7, .2, 1) both;
+  animation-delay: var(--retraso, 0ms);
+}
+@keyframes gr-crece-y { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+@keyframes gr-crece-x { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .grafica-anima .gr-barra,
+  .grafica-anima .gr-barra-h { animation: none; }
+  .gr-tip, .gr-hover { transition: none; }
+}

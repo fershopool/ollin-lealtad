@@ -600,6 +600,52 @@ select pg_temp.chk((public.tarjeta(current_setting('qz.rt')::uuid)->'config'->>'
 select pg_temp.debe_err(public.guardar_tema('700006', '{"emoji_sello":"<img>"}'::json), 'tema_invalido', 'v: emoji de sello con marcado');
 select pg_temp.debe_ok(public.guardar_tema('700006', '{}'::json), 'v: limpiar');
 
+-- w) Mensualidad: fecha de alta, vencimiento, registrar pago y banner (dias_para_vencer).
+select pg_temp.debe_ok(public.crear_cafeteria('admin-prueba', 'Cafe Mensual', 'Escuela M', '810001'), 'w: alta para probar la mensualidad');
+select pg_temp.chk((select creada_en from public.cafeterias where slug = 'cafe-mensual-escuela-m') is not null, 'w: la alta guarda la fecha de creacion');
+select pg_temp.chk((public.entrar('810001')->>'dias_para_vencer')::int between 27 and 31, 'w: la primera mensualidad vence en ~1 mes | ' || (public.entrar('810001')->>'dias_para_vencer'));
+select pg_temp.chk(public.entrar('810001')->>'vence_en' is not null and public.entrar('810001')->>'creada_en' is not null, 'w: entrar trae creada_en y vence_en');
+select pg_temp.chk((select (f->>'dias_para_vencer')::int between 27 and 31 and f->>'creada_en' is not null
+                     from json_array_elements(public.metricas('admin-prueba')->'filas') f where f->>'slug' = 'cafe-mensual-escuela-m'), 'w: metricas trae creada_en, vence_en y dias_para_vencer');
+select pg_temp.debe_err(public.set_vencimiento('mala', 'cafe-mensual-escuela-m', p_meses => 1), 'clave_invalida', 'w: set_vencimiento con clave mala');
+select pg_temp.debe_err(public.set_vencimiento('admin-prueba', 'no-hay', p_meses => 1), 'no_existe', 'w: set_vencimiento de un negocio inexistente');
+select pg_temp.debe_err(public.set_vencimiento('admin-prueba', 'cafe-mensual-escuela-m', p_meses => 0), 'fecha_invalida', 'w: 0 meses');
+select pg_temp.debe_err(public.set_vencimiento('admin-prueba', 'cafe-mensual-escuela-m', p_meses => 25), 'fecha_invalida', 'w: 25 meses');
+select pg_temp.debe_err(public.set_vencimiento('admin-prueba', 'cafe-mensual-escuela-m', p_vence => current_date + 4000), 'fecha_invalida', 'w: fecha muy lejana');
+select pg_temp.debe_ok(public.set_vencimiento('admin-prueba', 'cafe-mensual-escuela-m', p_vence => public._hoy() + 2), 'w: fijar el vencimiento en 2 dias');
+select pg_temp.chk((public.entrar('810001')->>'dias_para_vencer')::int = 2, 'w: faltan 2 dias para vencer');
+select pg_temp.debe_ok(public.set_vencimiento('admin-prueba', 'cafe-mensual-escuela-m', p_vence => public._hoy() - 5), 'w: fijar un vencimiento pasado');
+select pg_temp.chk((public.entrar('810001')->>'dias_para_vencer')::int = -5, 'w: vencida hace 5 dias (negativo)');
+select pg_temp.chk((public.set_vencimiento('admin-prueba', 'cafe-mensual-escuela-m', p_meses => 1)->>'vence_en')::date = (public._hoy() + interval '1 month')::date,
+  'w: registrar pago vencido suma el mes desde hoy');
+select pg_temp.chk((public.set_vencimiento('admin-prueba', 'cafe-mensual-escuela-m', p_meses => 1)->>'vence_en')::date = (public._hoy() + interval '2 months')::date,
+  'w: registrar pago adelantado suma el mes desde el vencimiento actual');
+select pg_temp.chk((public.set_vencimiento('admin-prueba', 'cafe-mensual-escuela-m')->>'vence_en') is null and (public.entrar('810001')->>'dias_para_vencer') is null,
+  'w: sin parametros quita el seguimiento');
+select pg_temp.chk((public.entrar('800001')->>'dias_para_vencer') is null, 'w: la cuenta de control no tiene vencimiento');
+
+-- x) estadisticas: periodo a elegir, horas, dias de la semana y serie diaria.
+select pg_temp.debe_err(public.estadisticas('999999'), 'pin_invalido', 'x: PIN malo');
+select pg_temp.debe_err(public.estadisticas('800001'), 'pin_invalido', 'x: la cuenta de control no tiene estadisticas');
+select pg_temp.debe_err(public.estadisticas('700006', current_date, current_date - 3), 'rango_invalido', 'x: fin anterior al inicio');
+select pg_temp.debe_err(public.estadisticas('700006', current_date - 400, current_date), 'rango_invalido', 'x: mas de 366 dias');
+select set_config('qz.es', public.estadisticas('700006')::text, true);
+select pg_temp.debe_ok(current_setting('qz.es')::json, 'x: estadisticas con el periodo por defecto');
+select pg_temp.chk(json_array_length(current_setting('qz.es')::json->'por_hora') = 24 and json_array_length(current_setting('qz.es')::json->'por_dia_semana') = 7,
+  'x: 24 horas y 7 dias');
+select pg_temp.chk(json_array_length(current_setting('qz.es')::json->'serie') = (current_setting('qz.es')::json->>'dias')::int, 'x: la serie trae un punto por dia');
+select pg_temp.chk((current_setting('qz.es')::json->'resumen'->>'ventas')::int >= 1, 'x: cuenta las ventas del negocio');
+select pg_temp.chk((select sum((h->>'ventas')::int) from json_array_elements(current_setting('qz.es')::json->'por_hora') h) = (current_setting('qz.es')::json->'resumen'->>'ventas')::int,
+  'x: la suma por hora coincide con las ventas');
+select pg_temp.chk((select sum((d->>'ventas')::int) from json_array_elements(current_setting('qz.es')::json->'por_dia_semana') d) = (current_setting('qz.es')::json->'resumen'->>'ventas')::int,
+  'x: la suma por dia de la semana coincide con las ventas');
+select pg_temp.chk((select sum((d->>'reclamos')::int) from json_array_elements(current_setting('qz.es')::json->'serie') d) = (current_setting('qz.es')::json->'resumen'->>'reclamos')::int,
+  'x: la suma de la serie coincide con los reclamos');
+select pg_temp.chk((current_setting('qz.es')::json->'resumen'->>'clientes')::int >= (current_setting('qz.es')::json->'resumen'->>'nuevos')::int
+  and (current_setting('qz.es')::json->'resumen'->>'repiten')::int <= (current_setting('qz.es')::json->'resumen'->>'clientes')::int, 'x: clientes >= nuevos y repiten <= clientes');
+select pg_temp.chk((public.estadisticas('700006', public._hoy() - 10, public._hoy() - 5)->'resumen'->>'ventas')::int = 0, 'x: un periodo sin actividad da ceros');
+select pg_temp.chk((public.estadisticas('700006', public._hoy(), public._hoy())->>'dias')::int = 1, 'x: un solo dia (hoy)');
+
 -- Cuenta de control: entra como una cafeteria, marca admin y no sale en métricas ni se puede volver distribuidor.
 select pg_temp.debe_ok(public.crear_cafeteria('admin-prueba', 'Control Quetzalitos', 'Quetzalitos', '800001'), 'r: alta de la cuenta de control');
 update public.cafeterias set super_admin = true where slug = 'control-quetzalitos-quetzalitos';

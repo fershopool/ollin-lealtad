@@ -77,11 +77,33 @@
   const btnActualizar = $('actualizar');
   let adentro = false; // clave validada: hay menú y sección visible
   let seccion = 'metricas';
+  // Dentro de Métricas: la tabla ('metricas') o las mensualidades ('mensualidades'). Solo en memoria.
+  let vista = 'metricas';
+  let filtroM = 'todas'; // filtro de Mensualidades: todas | vencida | pronto | ok
+  let abierto = null; // formulario abierto en una tarjeta: { slug, modo: 'fecha' | 'quitar' }
+  let enfocar = null; // slug de la tarjeta a la que devolver el foco tras guardar
+  const vMetricas = $('v-metricas');
+  const vMens = $('v-mensualidades');
+  const botonesVista = document.querySelectorAll('[data-vista]');
+  const botonesFiltro = document.querySelectorAll('[data-filtro]');
+  const listaMens = $('lista-mens');
+  const avisoMens = $('mens-aviso');
+  const vacioMens = $('mens-vacio');
+  const outCreada = $('m-creada');
+  const outVence = $('m-vence');
+  const outChip = $('m-chip');
+  const btnPagar = $('m-pagar');
+  const avisoPago = $('m-pago-aviso');
 
   function seccionDesdeHash() {
     let h = location.hash.slice(1);
     if (ALIAS[h]) h = ALIAS[h];
+    if (h === 'mensualidades') return 'metricas';
     return SECCIONES.includes(h) ? h : 'metricas';
+  }
+
+  function vistaDesdeHash() {
+    return location.hash.slice(1) === 'mensualidades' ? 'mensualidades' : 'metricas';
   }
 
   function pintarSeccion() {
@@ -93,13 +115,19 @@
       if (activa) b.setAttribute('aria-current', 'page');
       else b.removeAttribute('aria-current');
     }
+    const enMens = adentro && seccion === 'metricas' && vista === 'mensualidades';
+    vMetricas.classList.toggle('oculto', enMens);
+    vMens.classList.toggle('oculto', !enMens);
+    for (const b of botonesVista) b.setAttribute('aria-pressed', String(b.dataset.vista === vista));
   }
 
-  // Cambia de sección y deja la elegida en el hash (sin llenar el historial).
-  function irA(s) {
+  // Cambia de sección (y de vista dentro de Métricas) y deja la elegida en el hash (sin llenar el historial).
+  function irA(s, v) {
     const previa = seccion;
     seccion = SECCIONES.includes(s) ? s : 'metricas';
-    if (location.hash !== '#' + seccion) history.replaceState(null, '', '#' + seccion);
+    vista = v === 'mensualidades' && seccion === 'metricas' ? 'mensualidades' : 'metricas';
+    const destino = '#' + (vista === 'mensualidades' ? 'mensualidades' : seccion);
+    if (location.hash !== destino) history.replaceState(null, '', destino);
     if (previa === 'editar' && seccion !== 'editar') { // una baja a medias no sigue esperando al cambiar de sección
       pendiente = null;
       cajaConfirmar.classList.add('oculto');
@@ -114,7 +142,7 @@
     menu.classList.toggle('oculto', !visible);
     document.body.classList.toggle('con-nav', visible);
     if (visible) {
-      irA(seccionDesdeHash());
+      irA(seccionDesdeHash(), vistaDesdeHash());
     } else { // sin clave no queda una confirmación pendiente ni la tarjeta cargada
       qCargada = false;
       pendiente = null;
@@ -133,9 +161,28 @@
     errorEl.classList.toggle('oculto', !codigo);
   }
 
-  function celda(valor) {
+  function celda(valor, clase) {
     const td = document.createElement('td');
     td.textContent = valor;
+    if (clase) td.className = clase;
+    return td;
+  }
+
+  // Chip de estado de la mensualidad: color según Q.vencimiento; el texto va con textContent.
+  function pintarChip(el, dias) {
+    const v = Q.vencimiento(dias);
+    el.className = 'chip chip-' + v.estado;
+    el.textContent = v.texto;
+    return el;
+  }
+
+  function chipVenc(dias) {
+    return pintarChip(document.createElement('span'), dias);
+  }
+
+  function celdaVence(f) {
+    const td = celda('', 'col-texto');
+    td.appendChild(chipVenc(f.dias_para_vencer));
     return td;
   }
 
@@ -185,11 +232,13 @@
       const tr = document.createElement('tr');
       [etiqueta(f), f.escuela || '—', f.ventas, f.reclamos, adopcion(f.reclamos, f.ventas), f.canjes, f.tarjetas_nuevas, f.distribuidor === true ? 'Sí' : 'No']
         .forEach((v) => tr.appendChild(celda(v)));
+      tr.appendChild(celda(Q.fecha(f.creada_en) || '—', 'col-texto'));
+      tr.appendChild(celdaVence(f));
       cuerpo.appendChild(tr);
     }
     const tr = document.createElement('tr');
     tr.className = 'total';
-    ['Total', '', total.ventas, total.reclamos, adopcion(total.reclamos, total.ventas), total.canjes, total.tarjetas_nuevas, '']
+    ['Total', '', total.ventas, total.reclamos, adopcion(total.reclamos, total.ventas), total.canjes, total.tarjetas_nuevas, '', '', '']
       .forEach((v) => tr.appendChild(celda(v)));
     cuerpo.appendChild(tr);
     tabla.classList.remove('oculto');
@@ -214,7 +263,208 @@
       rellenarEditar();
       rellenarTrasGuardar = false;
     }
+    pintarVencEditar();
+    pintarMens();
   }
+
+  // Editar: fechas y chip de la cafetería elegida (solo lectura; no toca los campos que se están escribiendo).
+  function pintarVencEditar() {
+    const f = filasActuales.find((x) => x.slug === selMCual.value);
+    outCreada.textContent = (f && Q.fecha(f.creada_en)) || '—';
+    outVence.textContent = (f && Q.fecha(f.vence_en)) || '—';
+    pintarChip(outChip, f ? f.dias_para_vencer : null);
+    btnPagar.disabled = !f;
+  }
+
+  // Mensualidades: contadores, lista filtrada y tarjetas ordenadas por días para vencer (sin cobro, al final).
+  function pintarMens() {
+    const cont = { vencida: 0, pronto: 0, ok: 0 };
+    for (const f of filasActuales) {
+      const e = Q.vencimiento(f.dias_para_vencer).estado;
+      if (e in cont) cont[e]++;
+    }
+    $('c-vencida').textContent = cont.vencida;
+    $('c-pronto').textContent = cont.pronto;
+    $('c-ok').textContent = cont.ok;
+    $('c-todas').textContent = filasActuales.length;
+    for (const b of botonesFiltro) b.setAttribute('aria-pressed', String(b.dataset.filtro === filtroM));
+    const sinDias = (f) => f.dias_para_vencer === null || f.dias_para_vencer === undefined;
+    const ordenadas = filasActuales.slice().sort((a, b) => {
+      if (sinDias(a) || sinDias(b)) return sinDias(a) - sinDias(b);
+      return a.dias_para_vencer - b.dias_para_vencer;
+    });
+    const visibles = ordenadas.filter((f) => filtroM === 'todas' || Q.vencimiento(f.dias_para_vencer).estado === filtroM);
+    listaMens.replaceChildren(...visibles.map(tarjetaMens));
+    vacioMens.classList.toggle('oculto', visibles.length > 0);
+    if (enfocar) {
+      for (const li of listaMens.children) {
+        if (li.dataset.slug === enfocar) { li.querySelector('h3').focus({ preventScroll: true }); break; }
+      }
+      enfocar = null;
+    }
+  }
+
+  function dato(termino, valor) {
+    const div = document.createElement('div');
+    const dt = document.createElement('dt');
+    dt.textContent = termino;
+    const dd = document.createElement('dd');
+    dd.textContent = valor;
+    div.append(dt, dd);
+    return div;
+  }
+
+  function botonAcc(texto, clases, alCliquear) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = clases;
+    b.textContent = texto;
+    b.addEventListener('click', alCliquear);
+    return b;
+  }
+
+  function tarjetaMens(f) {
+    const li = document.createElement('li');
+    li.className = 'tarjeta-mens';
+    li.dataset.slug = f.slug;
+
+    const cab = document.createElement('div');
+    cab.className = 'cab-mens';
+    const h = document.createElement('h3');
+    h.tabIndex = -1;
+    h.textContent = etiqueta(f) + conEscuela(f);
+    cab.append(h, chipVenc(f.dias_para_vencer));
+
+    const datos = document.createElement('dl');
+    datos.className = 'datos-mens';
+    datos.append(dato('Creada', Q.fecha(f.creada_en) || '—'), dato('Vence', Q.fecha(f.vence_en) || '—'));
+
+    const acciones = document.createElement('div');
+    acciones.className = 'acciones-mens';
+    acciones.append(
+      botonAcc('Registrar pago (+1 mes)', 'btn btn-rosa btn-chico', () => cambiarVencimiento(f.slug, null, 1, li)),
+      botonAcc('Elegir fecha', 'btn btn-fantasma btn-chico', () => {
+        abierto = { slug: f.slug, modo: 'fecha' };
+        pintarMens();
+        const inp = $('mens-fecha');
+        if (inp) inp.focus();
+      }),
+      botonAcc('Quitar seguimiento', 'btn btn-fantasma btn-chico', () => {
+        abierto = { slug: f.slug, modo: 'quitar' };
+        pintarMens();
+        const no = $('mens-quitar-no');
+        if (no) no.focus();
+      })
+    );
+    li.append(cab, datos, acciones);
+
+    if (abierto && abierto.slug === f.slug && abierto.modo === 'fecha') {
+      const form = document.createElement('form');
+      form.className = 'form-fecha';
+      form.autocomplete = 'off';
+      const lb = document.createElement('label');
+      lb.htmlFor = 'mens-fecha';
+      lb.textContent = 'Nueva fecha de vencimiento';
+      const inp = document.createElement('input');
+      inp.type = 'date';
+      inp.id = 'mens-fecha';
+      inp.className = 'campo campo-texto';
+      inp.required = true;
+      const fila = document.createElement('div');
+      fila.className = 'fila-acc';
+      const guardar = document.createElement('button');
+      guardar.type = 'submit';
+      guardar.className = 'btn btn-rosa btn-chico';
+      guardar.textContent = 'Guardar';
+      fila.append(guardar, botonAcc('Cancelar', 'btn btn-fantasma btn-chico', () => { abierto = null; pintarMens(); }));
+      form.append(lb, inp, fila);
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (!inp.value) { avisar(avisoMens, 'Elige una fecha.', true); inp.focus(); return; }
+        cambiarVencimiento(f.slug, inp.value, null, li);
+      });
+      li.appendChild(form);
+    } else if (abierto && abierto.slug === f.slug && abierto.modo === 'quitar') {
+      const caja = document.createElement('div');
+      caja.className = 'confirmar-quitar';
+      const p = document.createElement('p');
+      p.textContent = '¿Quitar el seguimiento de «' + etiqueta(f) + '»? Dejará de tener fecha de vencimiento.';
+      const no = botonAcc('Cancelar', 'btn btn-fantasma btn-chico', () => { abierto = null; pintarMens(); });
+      no.id = 'mens-quitar-no';
+      const si = botonAcc('Sí, quitar', 'btn btn-peligro relleno btn-chico', () => cambiarVencimiento(f.slug, null, null, li));
+      const fila = document.createElement('div');
+      fila.className = 'fila-acc';
+      fila.append(si, no);
+      caja.append(p, fila);
+      li.appendChild(caja);
+    }
+    return li;
+  }
+
+  // Aviso breve con espacio reservado; «mal» lo pinta en color de error.
+  function avisar(el, texto, mal) {
+    el.className = 'aviso-mens' + (mal ? ' mal' : '');
+    el.textContent = texto;
+  }
+
+  // Única llamada a set_vencimiento: vence (AAAA-MM-DD), meses (1-24) o ambos null para quitar el seguimiento.
+  function ajustarVencimiento(slug, vence, meses) {
+    return Q.rpc('set_vencimiento', { p_clave: clave, p_slug: slug, p_vence: vence, p_meses: meses });
+  }
+
+  // Aplica el resultado en la fila local y repinta tabla, tarjetas y Editar, sin volver a pedir las métricas.
+  function aplicarVencimiento(slug, res) {
+    filasActuales = filasActuales.map((x) => (x.slug === slug
+      ? { ...x, vence_en: res.vence_en, dias_para_vencer: res.dias_para_vencer } : x));
+    pintar(filasActuales);
+  }
+
+  function textoVence(res) {
+    return res.vence_en ? 'Vence ' + Q.fecha(res.vence_en) + '.' : 'Sin seguimiento de mensualidad.';
+  }
+
+  async function cambiarVencimiento(slug, vence, meses, li) {
+    if (!clave) return;
+    for (const el of li.querySelectorAll('button, input')) el.disabled = true;
+    avisar(avisoMens, 'Guardando…', false);
+    const res = await ajustarVencimiento(slug, vence, meses);
+    if (!res || !res.ok) {
+      const codigo = (res && res.error) || 'red';
+      if (codigo === 'clave_invalida') { claveInvalidaQ(); return; }
+      if (codigo === 'red') {
+        avisar(avisoMens, 'No se pudo confirmar la respuesta. Se vuelve a cargar la lista para ver el estado real.', true);
+        consultar(true);
+        return;
+      }
+      avisar(avisoMens, Q.msg(codigo), true);
+      if (codigo === 'no_existe') consultar(true);
+      else pintarMens();
+      return;
+    }
+    abierto = null;
+    enfocar = slug;
+    aplicarVencimiento(slug, res);
+    avisar(avisoMens, '«' + res.cafeteria + '»: ' + textoVence(res), false);
+  }
+
+  // Editar: «Registrar pago (+1 mes)» usa la misma llamada que las tarjetas.
+  btnPagar.addEventListener('click', async () => {
+    const f = filasActuales.find((x) => x.slug === selMCual.value);
+    if (!clave || !f) return;
+    btnPagar.disabled = true;
+    avisar(avisoPago, 'Guardando…', false);
+    const res = await ajustarVencimiento(f.slug, null, 1);
+    btnPagar.disabled = false;
+    if (!res || !res.ok) {
+      const codigo = (res && res.error) || 'red';
+      if (codigo === 'clave_invalida') { claveInvalidaQ(); return; }
+      avisar(avisoPago, codigo === 'red' ? 'No se pudo confirmar la respuesta. Revisa la fecha antes de intentar de nuevo.' : Q.msg(codigo), true);
+      if (codigo === 'red' || codigo === 'no_existe') consultar(true);
+      return;
+    }
+    aplicarVencimiento(f.slug, res);
+    avisar(avisoPago, '«' + res.cafeteria + '»: pago registrado. ' + textoVence(res), false);
+  });
 
   // sinParpadeo: al refrescar tras un alta la tabla se queda a la vista, para que la página no brinque ni se pierda el aviso del PIN.
   async function consultar(sinParpadeo) {
@@ -262,6 +512,8 @@
   selMCual.addEventListener('change', () => {
     inMPin.value = ''; // un PIN escrito para una cafetería no se aplica a otra
     rellenarEditar();
+    pintarVencEditar();
+    avisar(avisoPago, '', false);
   });
 
   formNueva.addEventListener('submit', async (e) => {
@@ -565,14 +817,28 @@
     b.addEventListener('click', () => irA(b.dataset.seccion));
   }
 
+  // Métricas | Mensualidades: cambia la vista dentro de Métricas (queda en el hash).
+  for (const b of botonesVista) {
+    b.addEventListener('click', () => irA('metricas', b.dataset.vista));
+  }
+
+  // Contadores de Mensualidades: filtran la lista (el filtro vive solo en memoria).
+  for (const b of botonesFiltro) {
+    b.addEventListener('click', () => {
+      filtroM = b.dataset.filtro;
+      abierto = null;
+      pintarMens();
+    });
+  }
+
   // Volver regresa a la pantalla principal (caja); la clave solo vive en memoria y se olvida al salir de esta página.
   btnSalir.addEventListener('click', () => {
     clave = null;
     location.href = '../caja/';
   });
 
-  window.addEventListener('hashchange', () => irA(seccionDesdeHash()));
+  window.addEventListener('hashchange', () => irA(seccionDesdeHash(), vistaDesdeHash()));
 
   // Al cargar: sin clave validada no hay menú ni sección visible; solo se recuerda cuál abrir.
-  irA(seccionDesdeHash());
+  irA(seccionDesdeHash(), vistaDesdeHash());
 })();

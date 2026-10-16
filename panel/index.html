@@ -9,7 +9,7 @@
   <link rel="apple-touch-icon" href="../img/icono.png">
   <link rel="stylesheet" href="../fonts/fonts.css?v=10">
   <link rel="stylesheet" href="../estilo.css?v=10">
-  <link rel="stylesheet" href="panel.css?v=10">
+  <link rel="stylesheet" href="panel.css?v=15">
 </head>
 <body>
   <main>
@@ -32,6 +32,12 @@
     <section id="metricas" class="oculto">
       <h2>Métricas</h2>
       <div class="divisor" aria-hidden="true"><i></i></div>
+      <div class="segmentado" role="group" aria-label="Vista de Métricas">
+        <button id="vista-metricas" class="seg-op" type="button" data-vista="metricas" aria-pressed="true">Métricas</button>
+        <button id="vista-mens" class="seg-op" type="button" data-vista="mensualidades" aria-pressed="false">Mensualidades</button>
+      </div>
+
+      <div id="v-metricas">
       <label for="periodo">Periodo</label>
       <div class="fila-periodo">
         <select id="periodo" class="campo">
@@ -50,6 +56,7 @@
             <tr>
               <th>Cafetería</th><th>Escuela</th><th>Ventas</th><th>Reclamos</th>
               <th>Adopción</th><th>Canjes</th><th>Tarjetas nuevas</th><th>Distribuidor Quetzalitos</th>
+              <th class="col-texto">Creada</th><th class="col-texto">Vence</th>
             </tr>
           </thead>
           <tbody id="cuerpo"></tbody>
@@ -57,11 +64,25 @@
       </div>
 
       <p class="aviso">Ventas = QR generados desde caja. No se ven las ventas donde el personal de caja no tocó el botón. Reclamos = QR escaneados por clientes.</p>
+      </div>
+
+      <div id="v-mensualidades" class="oculto">
+        <div class="resumen-mens" role="group" aria-label="Filtrar por estado de la mensualidad">
+          <button class="contador" type="button" data-filtro="vencida" aria-pressed="false"><span class="contador-num" id="c-vencida">0</span><span class="contador-txt">Vencidas</span></button>
+          <button class="contador" type="button" data-filtro="pronto" aria-pressed="false"><span class="contador-num" id="c-pronto">0</span><span class="contador-txt">Por vencer (≤ 3 días)</span></button>
+          <button class="contador" type="button" data-filtro="ok" aria-pressed="false"><span class="contador-num" id="c-ok">0</span><span class="contador-txt">Al corriente</span></button>
+          <button class="contador" type="button" data-filtro="todas" aria-pressed="true"><span class="contador-num" id="c-todas">0</span><span class="contador-txt">Todas</span></button>
+        </div>
+        <p id="mens-aviso" class="aviso-mens" role="status" aria-live="polite"></p>
+        <p id="mens-vacio" class="aviso oculto">No hay cafeterías en este filtro.</p>
+        <ul id="lista-mens" class="lista-mens"></ul>
+      </div>
     </section>
 
     <section id="nueva" class="oculto">
       <h2>Nueva cafetería</h2>
       <div class="divisor" aria-hidden="true"><i></i></div>
+      <p class="letra-chica nota-seccion">La primera mensualidad vence en 1 mes; luego la ves en Métricas → Mensualidades.</p>
       <form id="form-nueva" autocomplete="off">
         <label for="n-nombre">Nombre</label>
         <input id="n-nombre" class="campo campo-texto" type="text" maxlength="80" required>
@@ -86,6 +107,12 @@
       <form id="form-editar" autocomplete="off">
         <label for="m-cual">Cafetería</label>
         <select id="m-cual" class="campo campo-texto" required></select>
+        <div class="venc-info">
+          <p><span>Creada</span> <strong id="m-creada">—</strong></p>
+          <p><span>Vence</span> <strong id="m-vence">—</strong> <span id="m-chip" class="chip chip-sin">Sin cobro</span></p>
+          <button id="m-pagar" class="btn btn-chico btn-rosa" type="button">Registrar pago (+1 mes)</button>
+          <p id="m-pago-aviso" class="aviso-mens" role="status" aria-live="polite"></p>
+        </div>
         <label for="m-nombre">Nombre</label>
         <input id="m-nombre" class="campo campo-texto" type="text" maxlength="80" required>
         <label for="m-escuela">Escuela (opcional)</label>
@@ -200,6 +227,6 @@
 
   <script src="../config.js?v=10"></script>
   <script src="../lib.js?v=10"></script>
-  <script src="panel.js?v=12"></script>
+  <script src="panel.js?v=14"></script>
 </body>
 </html>

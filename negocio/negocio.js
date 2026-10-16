@@ -7,7 +7,7 @@
 
   var pinActual = "";
   var seq = 0; // cada carga de métricas toma un número; las respuestas viejas se descartan
-  var periodoActual = "7"; // "7", "30" o "todo"
+  var periodo = { tipo: "preset", v: "7" }; // preset: "hoy" | "7" | "30" | "todo"; o personalizado (ver calcularPeriodo)
 
   function leerPin() {
     try { return sessionStorage.getItem(CLAVE_PIN) || ""; } catch (e) { return ""; }
@@ -28,17 +28,126 @@
     location.replace("../");
   }
 
-  function pintarMetricas(r) {
-    var ventas = r.ventas || 0;
-    var reclamos = r.reclamos || 0;
+  // ---- Resumen: métricas con conteo, desplegables con gráficas y mensualidad ----
+  var MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+  var MAX_DIAS = 366;
+  var CLAVE_PERIODO = "quetzalito.periodo";
+  var reducir = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  var datos = null; // última respuesta válida de estadisticas
+  var serieHoras = "ventas"; // qué cuenta el gráfico de horas: ventas | registros | canjes
+  var SERIE_NOMBRE = { ventas: "de ventas", registros: "de registros", canjes: "de canjes" };
+
+  function dosDigitos(n) { return (n < 10 ? "0" : "") + n; }
+  function aTexto(d) { return d.getFullYear() + "-" + dosDigitos(d.getMonth() + 1) + "-" + dosDigitos(d.getDate()); }
+  function aFecha(s) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || "");
+    if (!m) return null;
+    var d = new Date(+m[1], +m[2] - 1, +m[3]);
+    return d.getMonth() === +m[2] - 1 && d.getDate() === +m[3] ? d : null;
+  }
+  function hoyLocal() { var h = new Date(); return new Date(h.getFullYear(), h.getMonth(), h.getDate()); }
+  function diasEntre(a, b) { return Math.round((b - a) / 86400000) + 1; }
+  function textoCorto(d) {
+    return d.getDate() + " " + MESES[d.getMonth()] + (d.getFullYear() === hoyLocal().getFullYear() ? "" : " " + d.getFullYear());
+  }
+  function decimalTexto(v) { return String(Math.round(v * 10) / 10).replace(".", ","); }
+  // 13 → «1–2 pm»; 11 → «11 am–12 pm»
+  function etiquetaHora(h) {
+    var h2 = (h + 1) % 24;
+    var s1 = h < 12 ? "am" : "pm", s2 = h2 < 12 ? "am" : "pm";
+    var n1 = h % 12 || 12, n2 = h2 % 12 || 12;
+    return s1 === s2 ? n1 + "–" + n2 + " " + s2 : n1 + " " + s1 + "–" + n2 + " " + s2;
+  }
+
+  // Conteo breve (≤ 600 ms) hasta el valor; null = «—»; con movimiento reducido aparece de golpe
+  function contar(el, hasta, sufijo) {
+    if (el._anim) cancelAnimationFrame(el._anim);
+    el._anim = 0;
+    if (hasta === null) { el.textContent = "—"; return; }
+    if (reducir || !window.requestAnimationFrame || hasta === 0) { el.textContent = hasta + sufijo; return; }
+    var inicio = 0;
+    el._anim = requestAnimationFrame(function paso(ts) {
+      if (!inicio) inicio = ts;
+      var p = Math.min(1, (ts - inicio) / 600);
+      el.textContent = Math.round(hasta * (1 - Math.pow(1 - p, 3))) + sufijo;
+      el._anim = p < 1 ? requestAnimationFrame(paso) : 0;
+    });
+  }
+
+  function pintarResumen(r) {
+    var res = r.resumen || {};
+    var ventas = res.ventas || 0, reclamos = res.reclamos || 0;
     var pct = ventas === 0 ? 0 : Math.min(100, Math.round(reclamos / ventas * 100));
-    $("m-ventas").textContent = String(ventas);
-    $("m-reclamos").textContent = String(reclamos);
-    $("m-adopcion").textContent = ventas === 0 ? "—" : pct + "%";
+    contar($("m-ventas"), ventas, "");
+    contar($("m-reclamos"), reclamos, "");
+    contar($("m-canjes"), res.canjes || 0, "");
+    contar($("m-clientes"), res.clientes || 0, "");
+    contar($("m-adopcion"), ventas === 0 ? null : pct, "%");
     $("m-adopcion-barra").style.width = pct + "%";
     $("m-adopcion-track").setAttribute("aria-valuenow", String(pct));
-    $("m-canjes").textContent = String(r.canjes || 0);
-    $("m-tarjetas").textContent = String(r.tarjetas_nuevas || 0);
+    nuevosDatos();
+  }
+
+  // Mensualidad: chip bajo «tipo · escuela» (se oculta si el negocio no tiene cobro)
+  function pintarVencimiento(r) {
+    var chip = $("vence");
+    var v = r.vence_en ? Q.vencimiento(r.dias_para_vencer) : { estado: "sin" };
+    if (v.estado === "sin") return chip.classList.add("oculto");
+    chip.className = "vence" + (v.estado === "ok" ? "" : " " + v.estado);
+    chip.textContent = v.texto + " · " + (v.estado === "vencida" ? "" : "vence ") + Q.fecha(r.vence_en);
+  }
+
+  function pintarHoras() {
+    var res = window.Graficas ? Graficas.horas($("c-horas"), datos.por_hora, serieHoras) : null;
+    var hay = !!(res && res.total > 0);
+    var hora = hay ? etiquetaHora(res.pico.h) : "";
+    $("d-horas").textContent = hay ? "Pico " + hora : "";
+    $("h-texto").textContent = hay ? "Tu hora pico " + SERIE_NOMBRE[serieHoras] + " es " + hora : "";
+  }
+
+  function pintarSemana() {
+    var res = window.Graficas ? Graficas.semana($("c-semana"), datos.por_dia_semana) : null;
+    var hay = !!(res && res.total > 0 && res.mejor && res.mejor.nombre);
+    $("d-semana").textContent = hay ? "Mejor " + res.mejor.nombre : "";
+    $("s-texto").textContent = hay ? "Tu mejor día es el " + res.mejor.nombre : "";
+  }
+
+  function pintarSerie() {
+    if (window.Graficas) Graficas.serie($("c-serie"), datos.serie);
+    var ventas = 0;
+    (datos.serie || []).forEach(function (p) { ventas += p.ventas || 0; });
+    $("d-serie").textContent = ventas > 0 ? ventas + (ventas === 1 ? " venta" : " ventas") : "";
+  }
+
+  function pintarMezcla() {
+    var res = datos.resumen || {};
+    if (window.Graficas) Graficas.mezcla($("c-mezcla"), { clientes: res.clientes, nuevos: res.nuevos, antiguos: res.antiguos, repiten: res.repiten });
+    var visitas = Number(res.visitas_por_cliente) || 0;
+    $("d-mezcla").textContent = res.repiten > 0 ? res.repiten + (res.repiten === 1 ? " recurrente" : " recurrentes") : "";
+    $("mz-texto").textContent = res.clientes > 0 ? decimalTexto(visitas) + (visitas === 1 ? " visita" : " visitas") + " por cliente en promedio" : "";
+  }
+
+  function pintarEmbudo() {
+    var res = datos.resumen || {};
+    if (window.Graficas) Graficas.embudo($("c-embudo"), { ventas: res.ventas, reclamos: res.reclamos, canjes: res.canjes });
+    $("d-embudo").textContent = res.ventas > 0 ? "Canje " + Math.round((res.canjes || 0) / res.ventas * 100) + "%" : "";
+  }
+
+  // Cada desplegable se pinta al abrirse y cuando llegan datos nuevos (si está cerrado, queda pendiente)
+  var grupos = {
+    horas: { det: $("g-horas"), cont: $("c-horas"), sucio: true, pintar: pintarHoras },
+    semana: { det: $("g-semana"), cont: $("c-semana"), sucio: true, pintar: pintarSemana },
+    serie: { det: $("g-serie"), cont: $("c-serie"), sucio: true, pintar: pintarSerie },
+    mezcla: { det: $("g-mezcla"), cont: $("c-mezcla"), sucio: true, pintar: pintarMezcla },
+    embudo: { det: $("g-embudo"), cont: $("c-embudo"), sucio: true, pintar: pintarEmbudo }
+  };
+  function refrescar(g) {
+    if (!datos || !g.det.open || !g.sucio) return;
+    g.sucio = false;
+    g.pintar();
+  }
+  function nuevosDatos() {
+    Object.keys(grupos).forEach(function (k) { grupos[k].sucio = true; refrescar(grupos[k]); });
   }
 
   // ---- Mi tarjeta: editor de configuración con vista previa ----
@@ -135,22 +244,117 @@
     actualizarPrevia();
   }
 
-  function valorDias() {
-    return periodoActual === "todo" ? null : Number(periodoActual);
+  // Periodo: preset (hoy, 7, 30, todo) o personalizado: {tipo:"ultimos", n, u} | {tipo:"rango", desde, hasta}
+  function restarMeses(d, n) {
+    var m = d.getMonth() - n;
+    var ultimo = new Date(d.getFullYear(), m + 1, 0).getDate();
+    return new Date(d.getFullYear(), m, Math.min(d.getDate(), ultimo));
+  }
+  function calcularPeriodo(p) {
+    var hoy = hoyLocal();
+    if (p.tipo === "preset") {
+      if (p.v === "todo") return { desde: null, hasta: null };
+      var atras = p.v === "hoy" ? 0 : Number(p.v) - 1;
+      return { desde: new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - atras), hasta: hoy };
+    }
+    if (p.tipo === "ultimos") {
+      if (p.u === "meses") return { desde: restarMeses(hoy, p.n), hasta: hoy };
+      var dias = p.u === "semanas" ? 7 * p.n - 1 : p.n - 1; // «últimos N días» incluye hoy
+      return { desde: new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate() - dias), hasta: hoy };
+    }
+    return { desde: aFecha(p.desde), hasta: aFecha(p.hasta) };
+  }
+  // Cabe en MAX_DIAS (el «todo» no tiene fechas y siempre cabe)
+  function dentroDeLimite(p) {
+    var r = calcularPeriodo(p);
+    return !r.desde || !r.hasta || diasEntre(r.desde, r.hasta) <= MAX_DIAS;
+  }
+  // Panel «Personalizado»: si hay alguna fecha, rango; si no, «últimos N». → {periodo} o {error}
+  function validarPersonalizado() {
+    var desde = $("p-desde").value, hasta = $("p-hasta").value;
+    var p;
+    if (desde || hasta) {
+      if (!desde) return { error: "Indica la fecha inicial del rango." };
+      if (!aFecha(desde) || (hasta && !aFecha(hasta))) return { error: "Una de las fechas no es válida." };
+      p = { tipo: "rango", desde: desde, hasta: hasta || aTexto(hoyLocal()) };
+      if (aFecha(p.desde) > aFecha(p.hasta)) return { error: "La fecha inicial no puede ser posterior a la final." };
+    } else {
+      var txt = $("p-n").value.trim();
+      if (!/^\d+$/.test(txt) || Number(txt) < 1) return { error: "«Últimos» debe ser un número entero de 1 en adelante." };
+      p = { tipo: "ultimos", n: Number(txt), u: $("p-u").value };
+    }
+    if (!dentroDeLimite(p)) return { error: "El periodo no puede pasar de 366 días." };
+    return { periodo: p };
+  }
+  function guardarPeriodo() {
+    try { localStorage.setItem(CLAVE_PERIODO, JSON.stringify(periodo)); } catch (e) { /* sin almacenamiento: el periodo dura lo que la página */ }
+  }
+  function leerPeriodo() {
+    var p = null;
+    try { p = JSON.parse(localStorage.getItem(CLAVE_PERIODO) || "null"); } catch (e) { p = null; }
+    if (p && p.tipo === "preset" && ["hoy", "7", "30", "todo"].indexOf(p.v) >= 0) return p;
+    if (p && p.tipo === "ultimos" && p.n >= 1 && ["dias", "semanas", "meses"].indexOf(p.u) >= 0 && dentroDeLimite(p)) return p;
+    if (p && p.tipo === "rango" && aFecha(p.desde) && aFecha(p.hasta) && aFecha(p.desde) <= aFecha(p.hasta) && dentroDeLimite(p)) return p;
+    return { tipo: "preset", v: "7" };
+  }
+  function pintarSeleccion() {
+    var preset = periodo.tipo === "preset" ? periodo.v : "";
+    Array.prototype.forEach.call($("periodo").querySelectorAll(".seg-op"), function (x) {
+      x.setAttribute("aria-pressed", String(x.getAttribute("data-periodo") === preset));
+    });
+    $("btn-personal").setAttribute("aria-pressed", String(periodo.tipo !== "preset"));
+  }
+  function prellenarPersonalizado() {
+    if (periodo.tipo === "ultimos") {
+      $("p-n").value = String(periodo.n);
+      $("p-u").value = periodo.u;
+      $("p-desde").value = "";
+      $("p-hasta").value = "";
+    } else if (periodo.tipo === "rango") {
+      $("p-desde").value = periodo.desde;
+      $("p-hasta").value = periodo.hasta;
+    }
+  }
+  function abrirPersonal(abrir) {
+    $("personal").classList.toggle("abierto", abrir);
+    $("btn-personal").setAttribute("aria-expanded", String(abrir));
+  }
+  // Línea bajo el selector: «12 sep – 12 oct · 31 días»
+  function pintarLinea(desde, hasta, dias) {
+    var t = desde && hasta ? textoCorto(desde) + " – " + textoCorto(hasta) : "Todo el historial";
+    if (dias) t += " · " + dias + (dias === 1 ? " día" : " días");
+    $("periodo-linea").textContent = t;
   }
 
   function cargarMetricas() {
     var mio = ++seq;
-    mensaje($("metricas-msg"), "Cargando…", "aviso");
-    Q.rpc("mis_metricas", { p_pin: pinActual, p_dias: valorDias() }).then(function (r) {
+    var r0 = calcularPeriodo(periodo);
+    pintarLinea(r0.desde, r0.hasta, r0.desde && r0.hasta ? diasEntre(r0.desde, r0.hasta) : 0);
+    $("bento").classList.add("cargando");
+    mensaje($("metricas-msg"), "", "");
+    Q.rpc("estadisticas", {
+      p_pin: pinActual,
+      p_desde: r0.desde ? aTexto(r0.desde) : null,
+      p_hasta: r0.hasta ? aTexto(r0.hasta) : null
+    }).then(function (r) {
       if (mio !== seq) return; // el periodo cambió mientras cargaba
+      $("bento").classList.remove("cargando");
       if (r.ok) {
-        mensaje($("metricas-msg"), "", "");
-        return pintarMetricas(r);
+        datos = r;
+        pintarLinea(aFecha(r.desde), aFecha(r.hasta), r.dias);
+        return pintarResumen(r);
       }
       if (r.error === "pin_invalido") return salirAlInicio();
       mensaje($("metricas-msg"), Q.msg(r.error), "error");
     });
+  }
+
+  function elegirPeriodo(p) {
+    if (JSON.stringify(p) === JSON.stringify(periodo)) return;
+    periodo = p;
+    guardarPeriodo();
+    pintarSeleccion();
+    cargarMetricas();
   }
 
   // ---- Secciones (una a la vez) y menú flotante ----
@@ -183,6 +387,7 @@
     rellenarForm(r);
     Q.tema(r.tema);
     rellenarDiseno(r.tema);
+    pintarVencimiento(r);
     $("carga").classList.add("oculto");
     $("panel").classList.remove("oculto");
     $("nav").classList.remove("oculto");
@@ -201,6 +406,9 @@
   function iniciar() {
     pinActual = leerPin();
     if (!pinActual) return location.replace("../");
+    periodo = leerPeriodo();
+    pintarSeleccion();
+    prellenarPersonalizado();
     $("carga-verificando").classList.remove("oculto");
     Q.rpc("entrar", { p_pin: pinActual }).then(function (r) {
       if (r.ok) return mostrarPanel(r);
@@ -209,16 +417,44 @@
     });
   }
 
-  // Periodo: control segmentado (7 días · 30 días · Todo)
+  // Periodo: presets (Hoy · 7 días · 30 días · Todo) y «Personalizado» (desplegable)
   Array.prototype.forEach.call($("periodo").querySelectorAll(".seg-op"), function (b) {
     b.addEventListener("click", function () {
-      var v = this.getAttribute("data-dias");
-      if (v === periodoActual) return;
-      periodoActual = v;
-      Array.prototype.forEach.call($("periodo").querySelectorAll(".seg-op"), function (x) {
-        x.setAttribute("aria-pressed", String(x.getAttribute("data-dias") === v));
+      abrirPersonal(false);
+      elegirPeriodo({ tipo: "preset", v: this.getAttribute("data-periodo") });
+    });
+  });
+  $("btn-personal").addEventListener("click", function () {
+    abrirPersonal(!$("personal").classList.contains("abierto"));
+  });
+  $("form-personal").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var v = validarPersonalizado();
+    if (v.error) return mensaje($("p-msg"), v.error, "error");
+    mensaje($("p-msg"), "", "");
+    abrirPersonal(false);
+    elegirPeriodo(v.periodo);
+    prellenarPersonalizado();
+  });
+
+  // Desplegables: al abrir se pintan (si hace falta) y se relanza la animación de la gráfica
+  Object.keys(grupos).forEach(function (k) {
+    var g = grupos[k];
+    g.det.addEventListener("toggle", function () {
+      if (!g.det.open) return;
+      refrescar(g);
+      if (window.Graficas) Graficas.animar(g.cont);
+    });
+  });
+  Array.prototype.forEach.call(grupos.horas.det.querySelectorAll(".chip"), function (b) {
+    b.addEventListener("click", function () {
+      var s = this.getAttribute("data-serie");
+      if (s === serieHoras) return;
+      serieHoras = s;
+      Array.prototype.forEach.call(grupos.horas.det.querySelectorAll(".chip"), function (x) {
+        x.setAttribute("aria-pressed", String(x === b));
       });
-      cargarMetricas();
+      if (datos) pintarHoras();
     });
   });
 

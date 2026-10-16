@@ -10,6 +10,9 @@
   var timerVenta = null;
   var codigoVenta = "";
   var logoNegocio = null; // r.logo de entrar; sirve de logo central del QR propio
+  var CLAVE_AVISO = "quetzalito.aviso.venc"; // vencimiento ya cerrado en esta sesión
+  var avisoPendiente = null; // { dias, vence, clave } del aviso que toca mostrar en el menú
+  var timerAviso = null;
 
   function leerPin() {
     try { return sessionStorage.getItem(CLAVE_PIN) || ""; } catch (e) { return ""; }
@@ -20,6 +23,56 @@
 
   function mostrar(id) {
     PANTALLAS.forEach(function (p) { $(p).classList.toggle("oculto", p !== id); });
+    if (id === "menu") pintarAviso(); else ocultarAviso();
+  }
+
+  // Aviso de mensualidad: flotante, solo en el menú. Cerrarlo marca el vencimiento en sessionStorage
+  // (una vez por sesión); al salir se borra, así reaparece en el siguiente inicio de sesión.
+  function datosAviso(r) {
+    var d = r.dias_para_vencer;
+    if (r.admin === true || typeof d !== "number" || d > 3) return null;
+    var clave = String(r.vence_en);
+    try { if (sessionStorage.getItem(CLAVE_AVISO) === clave) return null; } catch (e) { /* sin almacenamiento: se muestra */ }
+    return { dias: d, vence: r.vence_en, clave: clave };
+  }
+
+  function pintarAviso() {
+    var d = avisoPendiente;
+    if (!d) return ocultarAviso();
+    var n = Math.abs(d.dias);
+    var titulo;
+    if (d.dias < 0) titulo = n === 1 ? "Tu mensualidad venció ayer" : "Tu mensualidad venció hace " + n + " días";
+    else if (d.dias === 0) titulo = "Tu mensualidad vence hoy";
+    else if (d.dias === 1) titulo = "Tu mensualidad vence mañana";
+    else titulo = "Tu mensualidad vence en " + d.dias + " días";
+    var fecha = Q.fecha(d.vence);
+    var aviso = $("aviso");
+    aviso.classList.toggle("vencida", d.dias < 0);
+    $("aviso-titulo").textContent = titulo;
+    $("aviso-sub").textContent = (fecha ? fecha + " · " : "") + "Para renovar, habla con tu asesor de Tlatolli.";
+    clearTimeout(timerAviso);
+    aviso.classList.remove("oculto");
+    document.body.classList.add("con-aviso");
+    void aviso.offsetWidth; // fuerza el estado inicial para que la transición de entrada corra
+    aviso.classList.add("mostrando");
+  }
+
+  // Oculta sin marcarlo como cerrado (al abrir venta/canje el aviso vuelve al regresar al menú).
+  function ocultarAviso() {
+    var aviso = $("aviso");
+    var reducido = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    clearTimeout(timerAviso);
+    aviso.classList.remove("mostrando");
+    document.body.classList.remove("con-aviso");
+    if (reducido) return aviso.classList.add("oculto");
+    timerAviso = setTimeout(function () { aviso.classList.add("oculto"); }, 360);
+  }
+
+  function cerrarAviso() {
+    if (!avisoPendiente) return;
+    try { sessionStorage.setItem(CLAVE_AVISO, avisoPendiente.clave); } catch (e) { /* sin almacenamiento: reaparece al volver */ }
+    avisoPendiente = null;
+    ocultarAviso();
   }
 
   // tipo: "aviso", "error" o "" (vacío oculta el mensaje)
@@ -70,6 +123,7 @@
     $("btn-panel").classList.toggle("oculto", admin);
     $("btn-control").classList.toggle("oculto", !admin);
     mensaje($("menu-msg"), "", "");
+    avisoPendiente = datosAviso(r);
     mostrar("menu");
   }
 
@@ -83,6 +137,7 @@
   function cerrarSesion() {
     pinActual = "";
     borrarPin();
+    try { sessionStorage.removeItem(CLAVE_AVISO); } catch (e) { /* nada que borrar */ }
     detenerVenta();
     location.replace("../");
   }
@@ -110,6 +165,11 @@
   });
 
   $("btn-salir").addEventListener("click", function () { cerrarSesion(); });
+
+  $("btn-cerrar-aviso").addEventListener("click", cerrarAviso);
+  document.addEventListener("keydown", function (e) {
+    if ((e.key === "Escape" || e.key === "Esc") && $("aviso").classList.contains("mostrando")) cerrarAviso();
+  });
 
   // Panel administrativo: página aparte; el PIN sigue en sessionStorage.
   $("btn-panel").addEventListener("click", function () { location.href = "../negocio/"; });

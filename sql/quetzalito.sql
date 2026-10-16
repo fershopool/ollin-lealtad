@@ -30,6 +30,10 @@ alter table cafeterias add column if not exists mensaje text;
 -- «Control Quetzalitos»: cuenta cuyo menú solo lleva al panel de super administrador (que sigue pidiendo la clave admin).
 -- Tema visual de las pantallas del negocio (colores, tipografías, emojis, imagen de fondo); lo valida guardar_tema.
 alter table cafeterias add column if not exists tema jsonb;
+-- Seguimiento de la mensualidad: fecha de alta y fecha en que vence (null = sin cobro). Los negocios que ya existían quedan con la fecha de esta migración
+-- como alta y sin vencimiento; los nuevos nacen con vencimiento a 1 mes. Las fechas se calculan en hora de la Ciudad de México.
+alter table cafeterias add column if not exists creada_en timestamptz not null default now();
+alter table cafeterias add column if not exists vence_en date;
 alter table cafeterias add column if not exists super_admin boolean not null default false;
 -- Distribuidor de Quetzalitos: las cafeterías que ya existían lo eran, así que nacen en true; las nuevas, en false (el default cambia después).
 alter table cafeterias add column if not exists distribuidor boolean not null default true;
@@ -86,6 +90,8 @@ alter table canjes add column if not exists programa text not null default 'q';
 -- Meta con la que se pidió el premio (null en canjes viejos = meta del programa); así cambiar la meta no altera el saldo ya calculado.
 alter table canjes add column if not exists meta int;
 
+create index if not exists sellos_cafeteria_creado_idx on sellos (cafeteria_id, creado_en);
+create index if not exists canjes_cafeteria_usado_idx on canjes (cafeteria_id, usado_en);
 create index if not exists tokens_cafeteria_creado_idx on tokens (cafeteria_id, creado_en);
 create index if not exists sellos_tarjeta_cafeteria_creado_idx on sellos (tarjeta_id, cafeteria_id, creado_en);
 create index if not exists canjes_codigo_creado_idx on canjes (codigo, creado_en);
@@ -121,6 +127,11 @@ as $$
     case when p_programa = 'q' then (select valor::int from config where clave = 'meta')
          else (select c.meta from cafeterias c where c.id::text = p_programa) end, 6), 1)
 $$;
+
+-- Fecha de hoy en México (Supabase corre en UTC: sin esto «hoy» cambiaría a las 6 pm).
+create or replace function _hoy() returns date
+language sql stable security definer set search_path = public, extensions, pg_temp
+as $$ select (now() at time zone 'America/Mexico_City')::date $$;
 
 -- ponytail: bloqueo global, no por IP (la función no ve la IP del cliente). Un atacante puede bloquear a todo el personal de caja 10 min.
 create or replace function _bloqueado() returns boolean
@@ -222,7 +233,10 @@ begin
                            'tipo', v_cafe.tipo, 'logo', v_cafe.logo, 'color', v_cafe.color,
                            'meta', greatest(v_cafe.meta, 1), 'premio', v_cafe.premio, 'unidad', v_cafe.unidad,
                            'mensaje', v_cafe.mensaje, 'distribuidor', v_cafe.distribuidor, 'admin', v_cafe.super_admin,
-                           'tema', v_cafe.tema);
+                           'tema', v_cafe.tema,
+                           'creada_en', v_cafe.creada_en, 'vence_en', v_cafe.vence_en,
+                           'dias_para_vencer', case when v_cafe.super_admin or v_cafe.vence_en is null then null
+                                                    else v_cafe.vence_en - _hoy() end);
 end
 $$;
 
@@ -497,6 +511,8 @@ begin
   select coalesce(json_agg(f order by f.escuela, f.cafeteria), '[]'::json) into v_filas
   from (
     select c.nombre as cafeteria, c.escuela, c.slug, c.activa, c.tope_hora, c.distribuidor,
+      c.creada_en, c.vence_en,
+      case when c.vence_en is null then null else c.vence_en - _hoy() end as dias_para_vencer,
       (select count(*) from tokens t
         where t.cafeteria_id = c.id and t.creado_en >= v_desde and t.cancelado_en is null) as ventas,
       (select count(*) from sellos s
@@ -594,8 +610,8 @@ begin
     v_slug := v_base || '-' || v_n;
   end loop;
 
-  insert into cafeterias (nombre, escuela, slug, pin_hash)
-  values (v_nombre, v_escuela, v_slug, extensions.crypt(p_pin, extensions.gen_salt('bf', 8)));
+  insert into cafeterias (nombre, escuela, slug, pin_hash, vence_en)
+  values (v_nombre, v_escuela, v_slug, extensions.crypt(p_pin, extensions.gen_salt('bf', 8)), (_hoy() + interval '1 month')::date);
   return json_build_object('ok', true, 'cafeteria', v_nombre, 'escuela', v_escuela, 'slug', v_slug);
 end
 $$;
@@ -871,6 +887,129 @@ begin
 end
 $$;
 
+-- Super admin: fija el vencimiento de la mensualidad de un negocio. Con p_vence fija esa fecha; con p_meses suma meses desde el vencimiento actual
+-- (o desde hoy si ya venció o no tiene: es «registrar pago»); sin ninguno de los dos quita el seguimiento. Mismo candado, bloqueo y clave que metricas.
+create or replace function set_vencimiento(p_clave text, p_slug text, p_vence date default null, p_meses int default null) returns json
+language plpgsql security definer set search_path = public, extensions, pg_temp
+as $$
+declare
+  v_hash text;
+  v_cafe cafeterias;
+  v_hoy date := _hoy();
+  v_nuevo date;
+begin
+  if _bloqueado() then
+    return json_build_object('ok', false, 'error', 'bloqueado');
+  end if;
+  select valor into v_hash from config where clave = 'admin_hash';
+  if v_hash is null or extensions.crypt(p_clave, v_hash) is distinct from v_hash then
+    perform _registrar_fallo();
+    return json_build_object('ok', false, 'error', 'clave_invalida');
+  end if;
+  select * into v_cafe from cafeterias where slug = p_slug and not super_admin for update;
+  if not found then
+    return json_build_object('ok', false, 'error', 'no_existe');
+  end if;
+  if p_vence is not null then
+    if p_vence < v_hoy - 365 or p_vence > v_hoy + 1830 then
+      return json_build_object('ok', false, 'error', 'fecha_invalida');
+    end if;
+    v_nuevo := p_vence;
+  elsif p_meses is not null then
+    if p_meses not between 1 and 24 then
+      return json_build_object('ok', false, 'error', 'fecha_invalida');
+    end if;
+    v_nuevo := (greatest(coalesce(v_cafe.vence_en, v_hoy), v_hoy) + make_interval(months => p_meses))::date;
+  end if;
+  update cafeterias set vence_en = v_nuevo where id = v_cafe.id;
+  return json_build_object('ok', true, 'cafeteria', v_cafe.nombre, 'vence_en', v_nuevo,
+                           'dias_para_vencer', case when v_nuevo is null then null else v_nuevo - v_hoy end);
+end
+$$;
+
+-- Estadísticas del propio negocio en un periodo a elección (fechas locales de México; máximo 366 días; p_desde null = desde el inicio).
+-- ventas = QR generados no cancelados; reclamos = QR escaneados; clientes = tarjetas con sello en el periodo; nuevos = primera vez en este local dentro del periodo;
+-- repiten = clientes con 2 o más sellos en el periodo. Las horas son hora de México. Un día de la semana va de 1 (lunes) a 7 (domingo).
+create or replace function estadisticas(p_pin text, p_desde date default null, p_hasta date default null) returns json
+language plpgsql security definer set search_path = public, extensions, pg_temp
+as $$
+declare
+  v_cafe cafeterias;
+  v_tz constant text := 'America/Mexico_City';
+  v_hasta date;
+  v_desde date;
+  v_ini timestamptz;
+  v_fin timestamptz;
+  v_primero timestamptz;
+  v_res json;
+begin
+  if _bloqueado() then
+    return json_build_object('ok', false, 'error', 'bloqueado');
+  end if;
+  v_cafe := _cafeteria_por_pin(p_pin);
+  if v_cafe.id is null or v_cafe.super_admin then
+    perform _registrar_fallo();
+    return json_build_object('ok', false, 'error', 'pin_invalido');
+  end if;
+
+  v_hasta := least(coalesce(p_hasta, _hoy()), _hoy());
+  if p_desde is null then
+    select least(v_cafe.creada_en,
+                 (select min(tk.creado_en) from tokens tk where tk.cafeteria_id = v_cafe.id),
+                 (select min(se.creado_en) from sellos se where se.cafeteria_id = v_cafe.id))
+      into v_primero;
+    v_desde := greatest((v_primero at time zone v_tz)::date, v_hasta - 365);
+  else
+    v_desde := p_desde;
+  end if;
+  if v_desde > v_hasta or v_hasta - v_desde > 365 then
+    return json_build_object('ok', false, 'error', 'rango_invalido');
+  end if;
+  v_ini := v_desde::timestamp at time zone v_tz;
+  v_fin := (v_hasta + 1)::timestamp at time zone v_tz;
+
+  with
+    prim as (select se.tarjeta_id, min(se.creado_en) as m from sellos se where se.cafeteria_id = v_cafe.id group by se.tarjeta_id),
+    s as (select se.tarjeta_id, se.creado_en from sellos se
+          where se.cafeteria_id = v_cafe.id and se.creado_en >= v_ini and se.creado_en < v_fin),
+    cli as (select tarjeta_id, count(*) as n from s group by tarjeta_id),
+    t as (select tk.creado_en from tokens tk
+          where tk.cafeteria_id = v_cafe.id and tk.cancelado_en is null and tk.creado_en >= v_ini and tk.creado_en < v_fin),
+    k as (select kj.usado_en from canjes kj
+          where kj.cafeteria_id = v_cafe.id and kj.usado_en >= v_ini and kj.usado_en < v_fin),
+    nue as (select m from prim where m >= v_ini and m < v_fin)
+  select json_build_object(
+    'ok', true, 'desde', v_desde, 'hasta', v_hasta, 'dias', v_hasta - v_desde + 1,
+    'resumen', json_build_object(
+      'ventas', (select count(*) from t),
+      'reclamos', (select count(*) from s),
+      'canjes', (select count(*) from k),
+      'clientes', (select count(*) from cli),
+      'nuevos', (select count(*) from nue),
+      'antiguos', (select count(*) from cli) - (select count(*) from nue),
+      'repiten', (select count(*) from cli where n >= 2),
+      'visitas_por_cliente', (select round(coalesce(sum(n)::numeric / nullif(count(*), 0), 0), 1) from cli)),
+    'por_hora', (select json_agg(json_build_object(
+        'h', g.h,
+        'ventas', (select count(*) from t where extract(hour from t.creado_en at time zone v_tz)::int = g.h),
+        'registros', (select count(*) from nue where extract(hour from nue.m at time zone v_tz)::int = g.h),
+        'canjes', (select count(*) from k where extract(hour from k.usado_en at time zone v_tz)::int = g.h)) order by g.h)
+      from generate_series(0, 23) as g(h)),
+    'por_dia_semana', (select json_agg(json_build_object(
+        'd', g.d,
+        'ventas', (select count(*) from t where extract(isodow from t.creado_en at time zone v_tz)::int = g.d),
+        'reclamos', (select count(*) from s where extract(isodow from s.creado_en at time zone v_tz)::int = g.d)) order by g.d)
+      from generate_series(1, 7) as g(d)),
+    'serie', (select json_agg(json_build_object(
+        'dia', g.d::date,
+        'ventas', (select count(*) from t where (t.creado_en at time zone v_tz)::date = g.d::date),
+        'reclamos', (select count(*) from s where (s.creado_en at time zone v_tz)::date = g.d::date)) order by g.d)
+      from generate_series(v_desde, v_hasta, interval '1 day') as g(d))
+  ) into v_res;
+  return v_res;
+end
+$$;
+
 -- Super admin: activa o desactiva que un negocio sea distribuidor de Quetzalitos (mismo candado, bloqueo y clave que metricas).
 create or replace function set_distribuidor(p_clave text, p_slug text, p_valor boolean) returns json
 language plpgsql security definer set search_path = public, extensions, pg_temp
@@ -899,7 +1038,7 @@ $$;
 -- Permisos --------------------------------------------------------------------
 
 revoke all on function _meta(text), _bloqueado(), _registrar_fallo(), _cafeteria_por_pin(text),
-  _saldo(uuid, text), _config_programa(text), _codigo_canje()
+  _saldo(uuid, text), _config_programa(text), _codigo_canje(), _hoy()
   from public, anon, authenticated;
 
 revoke all on function entrar(text), crear_venta(text, boolean), reclamar(text, uuid), tarjeta(uuid, text),
@@ -908,7 +1047,8 @@ revoke all on function entrar(text), crear_venta(text, boolean), reclamar(text, 
   guardar_config(text, text, text, text, int, text, text, text), set_distribuidor(text, text, boolean),
   guardar_tema(text, json),
   cancelar_venta(text, text),
-  quetzalitos_config(text, int, text, text, text)
+  quetzalitos_config(text, int, text, text, text),
+  set_vencimiento(text, text, date, int), estadisticas(text, date, date)
   from public, anon, authenticated;
 
 grant execute on function entrar(text), crear_venta(text, boolean), reclamar(text, uuid), tarjeta(uuid, text),
@@ -917,5 +1057,6 @@ grant execute on function entrar(text), crear_venta(text, boolean), reclamar(tex
   guardar_config(text, text, text, text, int, text, text, text), set_distribuidor(text, text, boolean),
   guardar_tema(text, json),
   cancelar_venta(text, text),
-  quetzalitos_config(text, int, text, text, text)
+  quetzalitos_config(text, int, text, text, text),
+  set_vencimiento(text, text, date, int), estadisticas(text, date, date)
   to anon, authenticated;

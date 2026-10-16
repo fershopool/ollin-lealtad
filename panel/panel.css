@@ -83,7 +83,7 @@ select.campo { font-size: 1rem; letter-spacing: .01em; }
   background: color-mix(in srgb, var(--noche) 72%, transparent); box-shadow: var(--sombra-card);
   -webkit-overflow-scrolling: touch;
 }
-.panel-tabla table { width: 100%; min-width: 600px; border-collapse: separate; border-spacing: 0; font-family: var(--sans); font-size: .9rem; color: var(--hielo); }
+.panel-tabla table { width: 100%; min-width: 760px; border-collapse: separate; border-spacing: 0; font-family: var(--sans); font-size: .9rem; color: var(--hielo); }
 .panel-tabla th {
   padding: 12px 10px; text-align: left; white-space: nowrap; font-weight: 600; font-size: .8rem; letter-spacing: .02em;
   background: var(--jade-osc); color: var(--hielo);
@@ -92,6 +92,7 @@ select.campo { font-size: 1rem; letter-spacing: .01em; }
 .panel-tabla td { padding: 11px 10px; text-align: left; white-space: nowrap; border-bottom: 1px solid var(--borde); }
 .panel-tabla tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--hielo) 4%, transparent); }
 .panel-tabla th:nth-child(n+3), .panel-tabla td:nth-child(n+3) { text-align: right; font-variant-numeric: tabular-nums; }
+.panel-tabla th.col-texto, .panel-tabla td.col-texto { text-align: left; font-variant-numeric: normal; }
 .panel-tabla th:first-child, .panel-tabla td:first-child {
   position: sticky; left: 0; z-index: 1; box-shadow: 6px 0 8px -6px rgba(0, 0, 0, .6);
 }
@@ -188,6 +189,84 @@ select.campo { font-size: 1rem; letter-spacing: .01em; }
   }
 }
 
+/* ---------- Métricas | Mensualidades: control segmentado ---------- */
+.segmentado {
+  display: flex; gap: 6px; padding: 5px; margin: 0 0 14px; border-radius: 18px;
+  border: 1px solid var(--borde); background: color-mix(in srgb, var(--noche) 80%, transparent);
+}
+.seg-op {
+  flex: 1 1 0; min-width: 0; min-height: 48px; padding: 8px 10px; border: 0; border-radius: 14px; cursor: pointer;
+  background: transparent; color: var(--niebla); font: inherit; font-size: .95rem; font-weight: 600;
+}
+.seg-op[aria-pressed="true"] { background: var(--rosa); color: var(--hielo); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3); }
+.seg-op:focus-visible { outline: 2px solid var(--naranja); outline-offset: 2px; }
+
+/* ---------- Mensualidades: contadores que filtran ---------- */
+.resumen-mens { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0 0 14px; }
+.contador {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-height: 64px; padding: 10px 12px;
+  border-radius: 16px; border: 1px solid var(--borde); background: var(--superficie); color: var(--niebla);
+  font: inherit; text-align: left; cursor: pointer;
+}
+.contador-num { font-family: var(--serif); font-size: 1.7rem; line-height: 1; color: var(--hielo); font-variant-numeric: tabular-nums; }
+.contador-txt { font-size: .8rem; font-weight: 600; }
+.contador[aria-pressed="true"] {
+  border-color: var(--naranja); color: var(--hielo);
+  background: color-mix(in srgb, var(--naranja) 14%, transparent); box-shadow: inset 0 0 0 1px var(--naranja);
+}
+.contador:focus-visible, .cab-mens h3:focus-visible { outline: 2px solid var(--naranja); outline-offset: 3px; }
+@media (min-width: 560px) { .resumen-mens { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* Aviso con alto reservado: al aparecer el texto no mueve la lista */
+.aviso-mens { min-height: 3em; margin: 0 0 12px; font-size: .9rem; color: var(--menta); text-align: left; }
+.aviso-mens.mal { color: var(--peligro-texto); }
+
+/* Tarjetas de cristal, una por cafetería */
+.lista-mens { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.tarjeta-mens {
+  padding: 16px; border-radius: var(--r-card); border: 1px solid var(--borde); background: var(--superficie);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: var(--sombra-card); text-align: left;
+}
+.cab-mens { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.cab-mens h3 {
+  min-width: 0; margin: 0; font-family: var(--serif); font-weight: 400; font-size: 1.3rem; line-height: 1.15;
+  color: var(--hielo); overflow-wrap: anywhere;
+}
+.datos-mens { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 10px 0 12px; }
+.datos-mens > div { display: flex; gap: 6px; align-items: baseline; }
+.datos-mens dt { color: var(--niebla); font-size: .85rem; }
+.datos-mens dd { margin: 0; color: var(--hielo); font-size: .95rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.acciones-mens { display: flex; flex-wrap: wrap; gap: 8px; }
+.acciones-mens .btn { min-height: 44px; }
+.form-fecha, .confirmar-quitar { display: grid; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--borde); }
+.form-fecha .campo { margin: 0; }
+.confirmar-quitar p { margin: 0; font-size: .9rem; color: var(--niebla); }
+.fila-acc { display: flex; flex-wrap: wrap; gap: 8px; }
+.fila-acc .btn { flex: 1 1 130px; margin: 0; }
+
+/* Chips de estado: jade ok, oro pronto, terracota vencida, gris sin cobro */
+.chip {
+  display: inline-block; padding: 5px 10px; border-radius: 999px; border: 1px solid transparent;
+  font-size: .8rem; font-weight: 600; line-height: 1.3; white-space: nowrap; color: var(--hielo); font-variant-numeric: tabular-nums;
+}
+.chip-ok { background: color-mix(in srgb, var(--esmeralda) 30%, var(--noche)); border-color: color-mix(in srgb, var(--esmeralda) 70%, transparent); }
+.chip-pronto { background: color-mix(in srgb, var(--naranja) 35%, var(--noche)); border-color: color-mix(in srgb, var(--naranja) 80%, transparent); }
+.chip-vencida { background: color-mix(in srgb, var(--rosa) 50%, var(--noche)); border-color: var(--rosa); }
+.chip-sin { background: color-mix(in srgb, var(--niebla) 14%, var(--noche)); border-color: color-mix(in srgb, var(--niebla) 40%, transparent); color: var(--niebla); }
+
+/* Editar: fechas de solo lectura y pago */
+.venc-info {
+  margin: 0 0 14px; padding: 12px 14px; border-radius: 16px; border: 1px solid var(--borde);
+  background: var(--superficie); text-align: left;
+}
+.venc-info p { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 8px; color: var(--hielo); font-size: .95rem; }
+.venc-info p > span:first-child { color: var(--niebla); }
+.venc-info .btn { margin: 4px 0 0; }
+.venc-info .aviso-mens { margin: 4px 0 0; }
+
+/* El menú flotante no tapa el último elemento */
+body.con-nav main { padding-bottom: 120px; }
+
 /* Ajustes tras revisión: el logo de Tlatolli es rectangular (no se recorta en círculo) y la vista previa de Quetzalitos ocupa menos alto. */
 .marca { width: 132px; height: auto; border-radius: 12px; overflow: hidden; box-shadow: 0 0 0 1.5px var(--naranja), 0 8px 22px -10px rgba(0, 0, 0, .7); }
 .marca img { height: auto; border-radius: 0; object-fit: contain; }
@@ -215,3 +294,6 @@ body.con-nav .marca { width: 92px; height: auto; margin: 0 auto 4px; }
   body.con-nav .marca { display: none; }
   body.con-nav .divisor:first-of-type { display: none; }
 }
+
+/* El aviso de la vista Mensualidades solo ocupa lugar cuando trae mensaje. */
+#v-mensualidades > .aviso-mens:empty { min-height: 0; margin: 0; }

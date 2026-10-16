@@ -5,3 +5,6 @@ sql/datos.plantilla.sql
 sql/datos.local.sql
 *.secreto.*
 .DS_Store
+
+research_notes/
+reports/
