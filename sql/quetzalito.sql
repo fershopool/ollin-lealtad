@@ -1105,13 +1105,18 @@ begin
   return extensions.encrypt(_xor16(x, blk), k, 'aes-ecb/pad:none');
 end $$;
 
--- Comprueba el CMAC de una URL SDM en claro. El CMAC truncado son los bytes pares (posiciones 2, 4, ... 16).
+-- Comprueba el CMAC de una URL SDM en claro, como lo hace el chip (AN12196, pg. 41-42):
+-- llave de sesión = CMAC(llave, SV) con SV = 3CC3 0001 0080 || UID (7) || contador LSB (3); el CMAC de la URL es CMAC(sesión, vacío),
+-- truncado a los bytes impares (posiciones 2, 4, ... 16).
 create or replace function _sdm_plano_verificar(p_uid text, p_ctr text, p_cmac text, p_llave bytea) returns boolean
 language plpgsql immutable set search_path = public, extensions, pg_temp
 as $$
-declare mac bytea; corto bytea := ''::bytea; i int;
+declare ctr bytea; ses bytea; mac bytea; corto bytea := ''::bytea; i int;
 begin
-  mac := _cmac(p_llave, convert_to(p_uid || p_ctr, 'UTF8'));
+  ctr := decode(p_ctr, 'hex');                              -- en la URL el contador va en MSB
+  ses := _cmac(p_llave, '\x3cc300010080'::bytea || decode(p_uid, 'hex')
+           || substring(ctr from 3 for 1) || substring(ctr from 2 for 1) || substring(ctr from 1 for 1));
+  mac := _cmac(ses, ''::bytea);
   for i in 0..7 loop corto := corto || set_byte('\x00'::bytea, 0, get_byte(mac, i * 2 + 1)); end loop;
   return encode(corto, 'hex') = lower(p_cmac);
 end $$;
@@ -1149,7 +1154,11 @@ begin
     end if;
   end if;
   v_llave := extensions.gen_random_bytes(16);
-  insert into etiquetas (cafeteria_id, programa, llave, uid) values (v_cafe.id, v_prog, v_llave, v_uidb);
+  begin
+    insert into etiquetas (cafeteria_id, programa, llave, uid) values (v_cafe.id, v_prog, v_llave, v_uidb);
+  exception when unique_violation then
+    return json_build_object('ok', false, 'error', 'uid_repetido');
+  end;
   return json_build_object('ok', true, 'cafeteria', v_cafe.nombre, 'programa', v_prog, 'llave', encode(v_llave, 'hex'));
 end $$;
 
@@ -1195,7 +1204,7 @@ begin
   end if;
   v_uidb := decode(p_uid, 'hex');
   v_ctrb := decode(p_ctr, 'hex');
-  v_ctr := get_byte(v_ctrb, 0) + get_byte(v_ctrb, 1) * 256 + get_byte(v_ctrb, 2) * 65536;
+  v_ctr := get_byte(v_ctrb, 0) * 65536 + get_byte(v_ctrb, 1) * 256 + get_byte(v_ctrb, 2);  -- MSB en la URL
 
   -- Etiquetas activas ligadas a este UID, o aún sin UID (las creadas antes de conocer su UID).
   for v_et in select e.* from etiquetas e join cafeterias c on c.id = e.cafeteria_id

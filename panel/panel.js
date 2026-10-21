@@ -523,7 +523,7 @@
       destino.textContent = 'No se creó la etiqueta NFC: ' + Q.msg(codigo);
       return;
     }
-    const url = new URL('../c/', location.href).href + '#e=' + '0'.repeat(32) + '&c=' + '0'.repeat(16);
+    const url = new URL('../c/', location.href).href + '#uid=' + '0'.repeat(14) + '&ctr=' + '0'.repeat(6) + '&cmac=' + '0'.repeat(16);
     const p = document.createElement('p');
     p.textContent = 'Etiqueta NFC de «' + r.cafeteria + '» creada. Anota la llave: no se puede volver a ver. Grábala en la etiqueta con esta URL (los ceros los reemplaza la etiqueta).';
     destino.replaceChildren(p, campoCopiar('Llave AES-128 (hex)', r.llave), campoCopiar('URL a grabar', url));

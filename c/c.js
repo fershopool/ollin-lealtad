@@ -16,6 +16,7 @@
   var programa = "q";   // programa activo
   var config = {};      // config del programa activo
   var nombres = {};     // clave de programa → nombre (para las fichas)
+  var progreso = {};    // clave de programa → {sellos, meta, color, logo, nombre} (para el mazo de tarjetas)
   var premioListo = false;
   var canjeActivo = false;
   var canjeFin = 0;
@@ -145,22 +146,64 @@
   }
 
   // Fichas para cambiar de programa; con un solo programa no se muestran.
+  // Mazo de tarjetas: una por programa, con logo, nombre y avance. Desliza en horizontal; la activa se centra.
   function pintarFichas() {
     var cont = $("programas");
     var lista = leerProgramas();
     cont.textContent = "";
     if (lista.length < 2) return cont.classList.add("oculto");
     cont.classList.remove("oculto");
+    var activa = null;
     for (var i = 0; i < lista.length; i++) {
       var k = lista[i];
+      var g = progreso[k] || {};
       var b = document.createElement("button");
       b.type = "button";
-      b.className = "btn btn-chico " + (k === programa ? "btn-oro" : "btn-claro");
-      b.textContent = nombres[k] || abreviar(k);
+      b.className = "mini" + (k === programa ? " activa" : "");
+      b.style.setProperty("--i", i);
       b.setAttribute("aria-pressed", k === programa ? "true" : "false");
+      b.setAttribute("aria-label", (nombres[k] || abreviar(k)) + (g.meta ? ", " + Math.min(g.sellos || 0, g.meta) + " de " + g.meta : ""));
+      if (RE_COLOR.test(g.color || "")) b.style.setProperty("--tono", g.color);
+      var cab = document.createElement("span");
+      cab.className = "mini-cab";
+      var ico = document.createElement("span");
+      ico.className = "mini-ico";
+      if (k === "q") {
+        var img = document.createElement("img");
+        img.alt = "";
+        img.src = Q.logo(null);
+        ico.appendChild(img);
+      } else if (g.logo) {
+        var im = document.createElement("img");
+        im.alt = "";
+        im.src = Q.logo(g.logo);
+        im.onerror = function () { this.remove(); };
+        ico.appendChild(im);
+      } else {
+        // Sin logo: iniciales del nombre, nunca un emoji.
+        ico.textContent = (nombres[k] || "?").split(/\s+/).filter(function (w) { return /^[A-Za-zÁÉÍÓÚÑáéíóúñ]/.test(w); }).slice(0, 2).map(function (w) { return w.charAt(0); }).join("").toUpperCase();
+        ico.classList.add("sin-logo");
+      }
+      var nom = document.createElement("span");
+      nom.className = "mini-nom";
+      nom.textContent = nombres[k] || abreviar(k);
+      cab.append(ico, nom);
+      var pie = document.createElement("span");
+      pie.className = "mini-pie";
+      var meta = g.meta || 0;
+      var llenos = Math.min(g.sellos || 0, meta);
+      pie.textContent = meta ? llenos + " / " + meta : "";
+      var barra = document.createElement("span");
+      barra.className = "mini-barra";
+      var rell = document.createElement("i");
+      rell.style.width = meta ? Math.round((llenos / meta) * 100) + "%" : "0%";
+      barra.appendChild(rell);
+      b.append(cab, barra, pie);
       b.onclick = (function (clave) { return function () { cambiarPrograma(clave); }; })(k);
       cont.appendChild(b);
+      if (k === programa) activa = b;
     }
+    if (activa) activa.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
   }
 
   // Franja de abajo: el botón de canje ocupa el lugar del contador (mismo alto, sin sumar altura).
@@ -221,6 +264,8 @@
     $("banda-ico").textContent = negocio ? (config.sello || "🎁") : "";
     $("banda-ico").classList.toggle("oculto", !negocio);
     $("banda-txt").textContent = config.premio || "Tu premio";
+    // Avance del premio: la capa de la banda crece con los sellos reunidos.
+    $("banda-avance").style.setProperty("--f", meta ? (llenos / meta).toFixed(3) : "0");
     var faltan = meta - llenos;
     var unidad = config.unidad || "sellos";
     $("texto").textContent = premioListo ? "¡Tarjeta completa!" : "Llevas " + llenos + " de " + meta + " " + unidad + " · te " + (faltan === 1 ? "falta 1" : "faltan " + faltan);
@@ -233,6 +278,7 @@
     $("titulo").textContent = nombre;
     document.title = nombre;
     if (config.nombre) nombres[programa] = config.nombre;
+    progreso[programa] = { sellos: r.sellos, meta: meta, color: config.color, logo: config.logo, nombre: config.nombre };
     aplicarColor(config.color, tema);
     aplicarLogo(config.logo, nombre);
 
@@ -268,6 +314,7 @@
   function pedirNombre(clave) {
     Q.rpc("tarjeta", { p_tarjeta: tarjetaId, p_programa: clave }).then(function (r) {
       if (r.ok && r.config && r.config.nombre) nombres[clave] = r.config.nombre;
+      if (r.ok) { var c = r.config || {}; progreso[clave] = { sellos: r.sellos, meta: Math.min(50, Math.max(1, r.meta || 1)), color: c.color, logo: c.logo, nombre: c.nombre }; }
       pintarFichas();
     });
   }
@@ -275,7 +322,7 @@
     if (!tarjetaId) return;
     var lista = leerProgramas();
     for (var i = 0; i < lista.length; i++) {
-      if (lista[i] !== programa && !nombres[lista[i]]) pedirNombre(lista[i]);
+      if (lista[i] !== programa) pedirNombre(lista[i]); // refresca nombre y avance de cada tarjeta
     }
   }
 

@@ -699,7 +699,10 @@ select pg_temp.chk(exists (select 1 from json_array_elements(public.metricas('ad
 -- ============ n) NFC en claro (UID + contador + CMAC) ============
 create function pg_temp.cmac_sun(p_llave text, p_uid text, p_ctr text)
 returns text language plpgsql as $$
-declare mac bytea := public._cmac(decode(p_llave, 'hex'), convert_to(p_uid || p_ctr, 'UTF8'));
+declare ctr bytea := decode(p_ctr, 'hex');
+  ses bytea := public._cmac(decode(p_llave, 'hex'), '\x3cc300010080'::bytea || decode(p_uid, 'hex')
+    || substring(ctr from 3 for 1) || substring(ctr from 2 for 1) || substring(ctr from 1 for 1));
+  mac bytea := public._cmac(ses, ''::bytea);
   corto text := ''; i int;
 begin
   for i in 0..7 loop corto := corto || lpad(to_hex(get_byte(mac, i * 2 + 1)), 2, '0'); end loop;

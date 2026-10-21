@@ -20,6 +20,7 @@
     canje_vencido: "El código de canje venció. Pide uno nuevo.",
     clave_invalida: "Clave incorrecta.",
     datos_invalidos: "Revisa el nombre (de 2 a 80 caracteres) y la escuela (opcional, hasta 40).",
+    uid_repetido: "Esa etiqueta ya está registrada. Usa Editar en la app.",
     pin_formato: "El PIN debe tener exactamente 6 números.",
     pin_repetido: "Ese PIN ya lo usa otra cafetería. Elige otro (si acabas de crearla, revisa la tabla).",
     tope_invalido: "El máximo de QR por hora debe ser un número entero de 1 a 1000.",

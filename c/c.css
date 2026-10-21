@@ -41,14 +41,62 @@ h1 {
 }
 .divisor { margin: 4px 0 6px; }
 
-/* Fichas de programa: fila horizontal deslizable, tocables (≥ 44 px). */
+/* Mazo de tarjetas: una por programa. Desliza en horizontal con ajuste (snap); la activa se centra y brilla. */
 #programas {
-  display: flex; flex-wrap: nowrap; gap: 8px; width: 100%; box-sizing: border-box; margin: 2px 0 0; padding: 2px 2px 4px;
+  display: flex; gap: 10px; width: 100%; box-sizing: border-box; margin: 4px 0 0; padding: 6px 4px 8px;
   overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  scroll-snap-type: x mandatory; scroll-padding-inline: 4px;
+  mask-image: linear-gradient(90deg, transparent 0, #000 14px, #000 calc(100% - 14px), transparent 100%);
 }
 #programas::-webkit-scrollbar { display: none; }
-#programas > .btn { flex: 0 0 auto; margin: 0; min-width: 120px; min-height: 44px; padding: 0 16px; font-size: .92rem; white-space: nowrap; }
-#programas > .btn[aria-pressed="true"] { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35), 0 0 0 2px var(--lima), 0 10px 22px -8px rgba(228, 0, 124, .85); }
+.mini {
+  --tono: var(--rosa-neon);
+  position: relative; flex: 0 0 auto; scroll-snap-align: center; box-sizing: border-box;
+  width: 136px; min-height: 84px; margin: 0; padding: 10px 12px 9px; border: 0; border-radius: 18px;
+  display: flex; flex-direction: column; gap: 6px; text-align: left; cursor: pointer;
+  color: #F4FFF9; font: inherit;
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, .14), rgba(255, 255, 255, .02) 55%) padding-box,
+    linear-gradient(160deg, rgba(255, 255, 255, .55), rgba(255, 255, 255, .05)) border-box;
+  border: 1.5px solid transparent;
+  box-shadow: 0 10px 22px -12px rgba(0, 0, 0, .7), inset 0 1px 0 rgba(255, 255, 255, .18);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  transition: transform .35s cubic-bezier(.2, .8, .2, 1), box-shadow .35s ease, opacity .35s ease;
+  animation: aparece .55s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 70ms);
+}
+.mini:active { transform: scale(.97); }
+.mini.activa {
+  transform: translateY(-2px);
+  background:
+    radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--tono) 55%, transparent), transparent 70%),
+    linear-gradient(160deg, rgba(255, 255, 255, .18), rgba(255, 255, 255, .03) 60%) padding-box,
+    conic-gradient(from 200deg, var(--tono), var(--lima), var(--azul-neon), var(--tono)) border-box;
+  box-shadow: 0 14px 28px -10px color-mix(in srgb, var(--tono) 70%, transparent), inset 0 1px 0 rgba(255, 255, 255, .25);
+}
+.mini:focus-visible { outline: 3px solid var(--lima); outline-offset: 3px; }
+.mini-cab { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.mini-ico {
+  flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; overflow: hidden;
+  background: radial-gradient(circle at 50% 35%, #FFFFFF, #CDF7E3); font-size: 16px; line-height: 1;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tono) 85%, #fff);
+}
+.mini-ico img { width: 100%; height: 100%; object-fit: cover; }
+.mini-nom {
+  min-width: 0; font-size: .82rem; font-weight: 700; line-height: 1.1;
+  overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.mini-barra { display: block; height: 6px; border-radius: 6px; background: rgba(255, 255, 255, .14); overflow: hidden; }
+.mini-barra i {
+  display: block; height: 100%; border-radius: inherit;
+  background: linear-gradient(90deg, var(--tono), var(--lima));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--tono) 80%, transparent);
+  transition: width .8s cubic-bezier(.2, .8, .2, 1);
+}
+.mini-pie { font-size: .72rem; font-weight: 600; opacity: .85; font-variant-numeric: tabular-nums; }
+
+@keyframes aparece { from { opacity: 0; transform: translateY(10px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes flota { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@keyframes respira { 0%, 100% { box-shadow: 0 0 0 0 rgba(198, 255, 122, .0); } 50% { box-shadow: 0 0 0 6px rgba(198, 255, 122, .18); } }
 
 /* Cuerpo: ocupa el resto de la pantalla; la tarjeta llena su alto. */
 .cuerpo { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
@@ -179,4 +227,35 @@ button:focus-visible, a:focus-visible { outline: 3px solid var(--lima); outline-
   #estado:not(.oculto), #estado.salir, .sello.reinicio, .sello.nuevo,
   #banda.listo, #banda.listo::before, #btn-premio, #btn-premio::before { animation: none !important; }
   .btn { transition: none; }
+}
+
+/* Entrada de la tarjeta y medallón que flota; sin movimiento si el sistema lo pide. */
+#tarjeta:not(.oculto) { animation: aparece .6s cubic-bezier(.2, .8, .2, 1) both; }
+.logo-halo { animation: flota 6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .mini, .logo-halo, #tarjeta:not(.oculto) { animation: none !important; }
+  .mini, .mini-barra i { transition: none; }
+}
+
+/* Avance del premio: la capa crece de izquierda a derecha con los sellos; brilla al completarse. */
+#banda { overflow: hidden; }
+.banda-avance {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none; border-radius: inherit;
+  transform-origin: left center; transform: scaleX(var(--f, 0));
+  background: linear-gradient(90deg, rgba(255, 138, 31, .45), rgba(198, 255, 122, .55));
+  animation: avance-llena 1.1s cubic-bezier(.2, .8, .2, 1) both;
+  transition: transform .9s cubic-bezier(.2, .8, .2, 1);
+}
+#banda-txt { position: relative; z-index: 1; }
+#banda::before, .ico-premio { z-index: 1; }
+@keyframes avance-llena { from { transform: scaleX(0); } to { transform: scaleX(var(--f, 0)); } }
+#banda.listo .banda-avance::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, .55) 50%, transparent 70%);
+  animation: brillo 2.4s ease-in-out infinite;
+}
+@keyframes brillo { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+.mini-ico.sin-logo { font-size: .7rem; font-weight: 800; color: #0D3B2E; letter-spacing: .02em; }
+@media (prefers-reduced-motion: reduce) {
+  .banda-avance, #banda.listo .banda-avance::after { animation: none !important; transition: none; }
 }
