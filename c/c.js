@@ -316,9 +316,9 @@
       tarjetaId = nuevoId();
       guardar(tarjetaId);
     }
-    // Etiqueta NFC: el hash trae e=<32 hex>&c=<16 hex>; el QR de caja trae solo el código.
-    var nfc = /^e=([0-9a-f]{32})&c=([0-9a-f]{16})$/i.exec(codigo);
-    (nfc ? Q.rpc("reclamar_nfc", { p_e: nfc[1], p_c: nfc[2], p_tarjeta: tarjetaId })
+    // Etiqueta NFC: el hash trae uid=<14 hex>&ctr=<6 hex>&cmac=<16 hex>; el QR de caja trae solo el código.
+    var nfc = /^uid=([0-9a-f]{14})&ctr=([0-9a-f]{6})&cmac=([0-9a-f]{16})$/i.exec(codigo);
+    (nfc ? Q.rpc("reclamar_nfc", { p_uid: nfc[1], p_ctr: nfc[2], p_cmac: nfc[3], p_tarjeta: tarjetaId })
          : Q.rpc("reclamar", { p_codigo: codigo, p_tarjeta: tarjetaId })).then(function (r) {
       reclamando = false;
       if (r.ok) {
