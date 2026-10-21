@@ -23,6 +23,8 @@
   const btnCrear = $('n-crear');
   const okNueva = $('n-ok');
   const errorNueva = $('n-error');
+  const inNfc = $('n-nfc');
+  const resNfcNueva = $('n-nfc-res');
   const listaEscuelas = $('escuelas');
   const formEliminar = $('form-eliminar');
   const selCual = $('e-cual');
@@ -494,6 +496,43 @@
     mostrarAdmin(true);
   }
 
+  // Etiqueta NFC: crea la llave en el servidor y muestra llave + URL para grabarlas (la llave no se vuelve a ver).
+  function campoCopiar(rotulo, valor) {
+    const fila = document.createElement('div');
+    fila.className = 'fila-pin';
+    const inp = document.createElement('input');
+    inp.className = 'campo';
+    inp.readOnly = true;
+    inp.value = valor;
+    inp.setAttribute('aria-label', rotulo);
+    inp.style.letterSpacing = 'normal';
+    inp.style.fontSize = '.8rem';
+    const b = botonAcc('Copiar', 'btn btn-chico btn-fantasma', () => {
+      navigator.clipboard.writeText(valor).then(() => { b.textContent = 'Copiado'; }, () => inp.select());
+    });
+    fila.append(inp, b);
+    return fila;
+  }
+
+  async function altaEtiqueta(slug, destino) {
+    destino.replaceChildren('Creando etiqueta…');
+    destino.classList.remove('oculto');
+    const r = await Q.rpc('crear_etiqueta', { p_clave: clave, p_slug: slug });
+    if (!r || !r.ok) {
+      const codigo = (r && r.error) || 'red';
+      destino.textContent = 'No se creó la etiqueta NFC: ' + Q.msg(codigo);
+      return;
+    }
+    const url = new URL('../c/', location.href).href + '#e=' + '0'.repeat(32) + '&c=' + '0'.repeat(16);
+    const p = document.createElement('p');
+    p.textContent = 'Etiqueta NFC de «' + r.cafeteria + '» creada. Anota la llave: no se puede volver a ver. Grábala en la etiqueta con esta URL (los ceros los reemplaza la etiqueta).';
+    destino.replaceChildren(p, campoCopiar('Llave AES-128 (hex)', r.llave), campoCopiar('URL a grabar', url));
+  }
+
+  $('m-nfc').addEventListener('click', () => {
+    if (clave && selMCual.value) altaEtiqueta(selMCual.value, $('m-nfc-res'));
+  });
+
   // PIN de 6 dígitos sin sesgo: 4 294 800 000 = 4772 × 900 000 (se descarta lo que sobra de los 2^32 valores).
   function pinAleatorio() {
     const n = new Uint32Array(1);
@@ -511,6 +550,7 @@
 
   selMCual.addEventListener('change', () => {
     inMPin.value = ''; // un PIN escrito para una cafetería no se aplica a otra
+    $('m-nfc-res').classList.add('oculto'); // la llave mostrada era de la cafetería anterior
     rellenarEditar();
     pintarVencEditar();
     avisar(avisoPago, '', false);
@@ -521,6 +561,7 @@
     if (!clave) return;
     const pin = inPin.value;
     okNueva.classList.add('oculto');
+    resNfcNueva.classList.add('oculto');
     errorNueva.classList.add('oculto');
     okElim.classList.add('oculto');
     errorElim.classList.add('oculto');
@@ -555,6 +596,7 @@
     ultimaAlta = res.slug;
     okNueva.classList.remove('oculto');
     okNueva.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    if (inNfc.checked) altaEtiqueta(res.slug, resNfcNueva);
     inNombre.value = '';
     inPin.value = ''; // la escuela se queda: suele darse de alta más de una cafetería seguida
     consultar(true);

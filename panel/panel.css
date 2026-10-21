@@ -297,3 +297,7 @@ body.con-nav .marca { width: 92px; height: auto; margin: 0 auto 4px; }
 
 /* El aviso de la vista Mensualidades solo ocupa lugar cuando trae mensaje. */
 #v-mensualidades > .aviso-mens:empty { min-height: 0; margin: 0; }
+
+.zona-nfc { margin-top: 28px; }
+.nfc-res { margin-top: 12px; font-size: .9rem; }
+.nfc-res .fila-pin { margin-top: 8px; }

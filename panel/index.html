@@ -94,9 +94,14 @@
           <input id="n-pin" class="campo" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required>
           <button id="n-generar" class="btn btn-chico btn-fantasma" type="button">Generar</button>
         </div>
+        <div class="fila-casilla">
+          <input id="n-nfc" type="checkbox">
+          <label for="n-nfc" class="casilla">Crear también su etiqueta NFC</label>
+        </div>
         <button id="n-crear" class="btn btn-oro" type="submit">Crear cafetería</button>
       </form>
       <p id="n-ok" class="aviso oculto" role="status"></p>
+      <div id="n-nfc-res" class="nfc-res oculto"></div>
       <p id="n-error" class="error oculto" role="alert"></p>
     </section>
 
@@ -137,6 +142,13 @@
       </form>
       <p id="m-ok" class="aviso oculto" role="status"></p>
       <p id="m-error" class="error oculto" role="alert"></p>
+
+      <div class="zona-nfc">
+        <h3>Etiqueta NFC</h3>
+        <p class="letra-chica nota-seccion">Vincula una etiqueta NFC nueva a la cafetería elegida arriba: solo sumará sellos en ese local. Te da la llave (se muestra una sola vez) y la URL para grabarla; los pasos están en NFC.md.</p>
+        <button id="m-nfc" class="btn btn-fantasma" type="button">Crear etiqueta NFC</button>
+        <div id="m-nfc-res" class="nfc-res oculto"></div>
+      </div>
 
       <div class="zona-peligro">
         <h3>Zona de peligro</h3>

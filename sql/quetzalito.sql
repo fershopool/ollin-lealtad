@@ -1035,10 +1035,192 @@ begin
 end
 $$;
 
+-- NFC (NTAG 424 DNA con SDM) ---------------------------------------------------
+-- La etiqueta fija en la cafetería genera en cada lectura una URL distinta: ?e=<UID+contador cifrado>&c=<CMAC>.
+-- El servidor comprueba la firma y que el contador sea mayor que el último visto: un enlace copiado no sirve dos veces.
+
+create table if not exists etiquetas (
+  id uuid primary key default gen_random_uuid(),
+  cafeteria_id uuid not null references cafeterias(id),
+  programa text not null,
+  llave bytea not null,
+  uid bytea,
+  ultimo_contador int not null default -1,
+  creada_en timestamptz not null default now()
+);
+alter table etiquetas enable row level security;
+revoke all on etiquetas from public, anon, authenticated;
+
+alter table sellos alter column token_id drop not null;
+alter table sellos add column if not exists etiqueta_id uuid references etiquetas(id);
+alter table sellos add column if not exists contador int;
+create index if not exists sellos_etiqueta_idx on sellos (etiqueta_id, contador);
+
+create or replace function _xor16(a bytea, b bytea) returns bytea
+language plpgsql immutable set search_path = public, extensions, pg_temp
+as $$
+declare r bytea := a; i int;
+begin
+  for i in 0..15 loop r := set_byte(r, i, get_byte(a, i) # get_byte(b, i)); end loop;
+  return r;
+end $$;
+
+create or replace function _cmac_dbl(b bytea) returns bytea
+language plpgsql immutable set search_path = public, extensions, pg_temp
+as $$
+declare r bytea := b; i int; carry int := 0; nxt int;
+begin
+  for i in reverse 15..0 loop
+    nxt := (get_byte(b, i) >> 7) & 1;
+    r := set_byte(r, i, ((get_byte(b, i) << 1) & 255) | carry);
+    carry := nxt;
+  end loop;
+  if carry = 1 then r := set_byte(r, 15, get_byte(r, 15) # 135); end if;
+  return r;
+end $$;
+
+-- AES-CMAC (RFC 4493).
+create or replace function _cmac(k bytea, m bytea) returns bytea
+language plpgsql immutable set search_path = public, extensions, pg_temp
+as $$
+declare
+  cero bytea := decode(repeat('00', 16), 'hex');
+  k1 bytea; k2 bytea; x bytea := decode(repeat('00', 16), 'hex'); blk bytea;
+  ln int := length(m); n int; i int;
+begin
+  k1 := _cmac_dbl(extensions.encrypt(cero, k, 'aes-ecb/pad:none'));
+  k2 := _cmac_dbl(k1);
+  n := greatest((ln + 15) / 16, 1);
+  for i in 0..n - 2 loop
+    x := extensions.encrypt(_xor16(x, substring(m from i * 16 + 1 for 16)), k, 'aes-ecb/pad:none');
+  end loop;
+  blk := substring(m from (n - 1) * 16 + 1);
+  if ln > 0 and ln % 16 = 0 then
+    blk := _xor16(blk, k1);
+  else
+    blk := _xor16(blk || '\x80'::bytea || decode(repeat('00', 15 - length(blk)), 'hex'), k2);
+  end if;
+  return extensions.encrypt(_xor16(x, blk), k, 'aes-ecb/pad:none');
+end $$;
+
+-- Verifica e (32 hex) y c (16 hex) de una etiqueta con esa llave. Devuelve uid y contador, o nulos si no coincide.
+create or replace function _sdm_verificar(p_e text, p_c text, p_llave bytea, out uid bytea, out contador int)
+language plpgsql immutable set search_path = public, extensions, pg_temp
+as $$
+declare plain bytea; ctr bytea; mac bytea; corto bytea := ''::bytea; i int;
+begin
+  plain := extensions.decrypt_iv(decode(p_e, 'hex'), p_llave, decode(repeat('00', 16), 'hex'), 'aes-cbc/pad:none');
+  if get_byte(plain, 0) <> 199 then return; end if;   -- 0xC7: UID de 7 bytes + contador
+  ctr := substring(plain from 9 for 3);
+  mac := _cmac(_cmac(p_llave, '\x3cc300010080'::bytea || substring(plain from 2 for 7) || ctr), ''::bytea);
+  for i in 0..7 loop corto := corto || set_byte('\x00'::bytea, 0, get_byte(mac, i * 2 + 1)); end loop;
+  if encode(corto, 'hex') <> lower(p_c) then return; end if;
+  uid := substring(plain from 2 for 7);
+  contador := get_byte(ctr, 0) + get_byte(ctr, 1) * 256 + get_byte(ctr, 2) * 65536;
+end $$;
+
+-- Alta de una etiqueta (clave admin): crea la llave y la devuelve UNA vez, en hex, para grabarla en la etiqueta.
+create or replace function crear_etiqueta(p_clave text, p_slug text, p_programa text default null) returns json
+language plpgsql security definer set search_path = public, extensions, pg_temp
+as $$
+declare v_hash text; v_cafe cafeterias; v_llave bytea; v_prog text;
+begin
+  if _bloqueado() then
+    return json_build_object('ok', false, 'error', 'bloqueado');
+  end if;
+  select valor into v_hash from config where clave = 'admin_hash';
+  if v_hash is null or extensions.crypt(p_clave, v_hash) is distinct from v_hash then
+    perform _registrar_fallo();
+    return json_build_object('ok', false, 'error', 'clave_invalida');
+  end if;
+  select * into v_cafe from cafeterias where slug = p_slug and not super_admin;
+  if not found then
+    return json_build_object('ok', false, 'error', 'no_existe');
+  end if;
+  v_prog := coalesce(p_programa, v_cafe.id::text);
+  if v_prog <> 'q' and v_prog <> v_cafe.id::text then
+    return json_build_object('ok', false, 'error', 'datos_invalidos');
+  end if;
+  v_llave := extensions.gen_random_bytes(16);
+  insert into etiquetas (cafeteria_id, programa, llave) values (v_cafe.id, v_prog, v_llave);
+  return json_build_object('ok', true, 'cafeteria', v_cafe.nombre, 'programa', v_prog, 'llave', encode(v_llave, 'hex'));
+end $$;
+
+-- Sello por NFC. Enfriamiento de 15 min por tarjeta y programa; tope de 4 sellos NFC al día por tarjeta y cafetería.
+-- El contador se consume antes de las demás comprobaciones: un enlace rechazado no se puede reutilizar más tarde.
+create or replace function reclamar_nfc(p_e text, p_c text, p_tarjeta uuid) returns json
+language plpgsql security definer set search_path = public, extensions, pg_temp
+as $$
+declare
+  v_et etiquetas; v_id uuid; v_uid bytea; v_ctr int;
+  v_tarj uuid; v_nueva boolean := false; v_repetido boolean := false;
+  v_saldo int; v_meta int; v_nombre text; v_n int;
+begin
+  if p_e is null or p_c is null or p_e !~* '^[0-9a-f]{32}$' or p_c !~* '^[0-9a-f]{16}$' then
+    return json_build_object('ok', false, 'error', 'nfc_invalido');
+  end if;
+  -- ponytail: se prueban todas las llaves (una por etiqueta); con cientos de etiquetas, añadir un prefijo de id a la URL.
+  for v_et in select e.* from etiquetas e join cafeterias c on c.id = e.cafeteria_id where c.activa loop
+    select r.uid, r.contador into v_uid, v_ctr from _sdm_verificar(p_e, p_c, v_et.llave) r;
+    if v_uid is not null then v_id := v_et.id; exit; end if;
+  end loop;
+  if v_id is null then
+    return json_build_object('ok', false, 'error', 'nfc_invalido');
+  end if;
+
+  select * into v_et from etiquetas where id = v_id for update;
+  if v_et.uid is not null and v_et.uid <> v_uid then
+    return json_build_object('ok', false, 'error', 'nfc_invalido');
+  end if;
+
+  if p_tarjeta is not null then
+    insert into tarjetas (id) values (p_tarjeta) on conflict (id) do nothing returning id into v_tarj;
+    v_nueva := found;
+  end if;
+  if v_tarj is null then
+    if p_tarjeta is null then
+      insert into tarjetas default values returning id into v_tarj;
+      v_nueva := true;
+    else
+      select id into v_tarj from tarjetas where id = p_tarjeta for update;
+    end if;
+  end if;
+
+  if v_ctr = v_et.ultimo_contador and exists (
+      select 1 from sellos s where s.etiqueta_id = v_et.id and s.contador = v_ctr and s.tarjeta_id = v_tarj) then
+    v_repetido := true;   -- reintento tras perder la respuesta
+  elsif v_ctr <= v_et.ultimo_contador then
+    return json_build_object('ok', false, 'error', 'nfc_usado');
+  else
+    update etiquetas set ultimo_contador = v_ctr, uid = v_uid where id = v_et.id;
+    if exists (select 1 from sellos s where s.tarjeta_id = v_tarj and s.cafeteria_id = v_et.cafeteria_id
+               and s.programa = v_et.programa and s.creado_en > now() - interval '15 minutes') then
+      return json_build_object('ok', false, 'error', 'sello_reciente');
+    end if;
+    select count(*) into v_n from sellos s where s.tarjeta_id = v_tarj and s.cafeteria_id = v_et.cafeteria_id
+      and s.etiqueta_id is not null and (s.creado_en at time zone 'America/Mexico_City')::date = _hoy();
+    if v_n >= 4 then
+      return json_build_object('ok', false, 'error', 'tope_dia');
+    end if;
+    insert into sellos (tarjeta_id, cafeteria_id, etiqueta_id, contador, creado_en, programa)
+    values (v_tarj, v_et.cafeteria_id, v_et.id, v_ctr, now(), v_et.programa);
+  end if;
+
+  v_meta := _meta(v_et.programa);
+  v_saldo := _saldo(v_tarj, v_et.programa);
+  select nombre into v_nombre from cafeterias where id = v_et.cafeteria_id;
+  return json_build_object(
+    'ok', true, 'tarjeta_id', v_tarj, 'sellos', v_saldo, 'meta', v_meta,
+    'premio_listo', v_saldo >= v_meta, 'cafeteria', v_nombre,
+    'nueva', v_nueva, 'repetido', v_repetido,
+    'programa', v_et.programa, 'config', _config_programa(v_et.programa));
+end $$;
+
 -- Permisos --------------------------------------------------------------------
 
 revoke all on function _meta(text), _bloqueado(), _registrar_fallo(), _cafeteria_por_pin(text),
-  _saldo(uuid, text), _config_programa(text), _codigo_canje(), _hoy()
+  _saldo(uuid, text), _config_programa(text), _codigo_canje(), _hoy(),
+  _xor16(bytea, bytea), _cmac_dbl(bytea), _cmac(bytea, bytea), _sdm_verificar(text, text, bytea)
   from public, anon, authenticated;
 
 revoke all on function entrar(text), crear_venta(text, boolean), reclamar(text, uuid), tarjeta(uuid, text),
@@ -1048,7 +1230,8 @@ revoke all on function entrar(text), crear_venta(text, boolean), reclamar(text, 
   guardar_tema(text, json),
   cancelar_venta(text, text),
   quetzalitos_config(text, int, text, text, text),
-  set_vencimiento(text, text, date, int), estadisticas(text, date, date)
+  set_vencimiento(text, text, date, int), estadisticas(text, date, date),
+  crear_etiqueta(text, text, text), reclamar_nfc(text, text, uuid)
   from public, anon, authenticated;
 
 grant execute on function entrar(text), crear_venta(text, boolean), reclamar(text, uuid), tarjeta(uuid, text),
@@ -1058,5 +1241,6 @@ grant execute on function entrar(text), crear_venta(text, boolean), reclamar(tex
   guardar_tema(text, json),
   cancelar_venta(text, text),
   quetzalitos_config(text, int, text, text, text),
-  set_vencimiento(text, text, date, int), estadisticas(text, date, date)
+  set_vencimiento(text, text, date, int), estadisticas(text, date, date),
+  crear_etiqueta(text, text, text), reclamar_nfc(text, text, uuid)
   to anon, authenticated;

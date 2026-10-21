@@ -696,6 +696,63 @@ select pg_temp.chk(exists (select 1 from json_array_elements(public.metricas('ad
   where e->>'slug' = 'cafe-ed-1-escuela-p' and (e->>'activa')::boolean = true and (e->>'tope_hora')::int = 1000),
   'p: metricas: tope_hora refleja el valor editado');
 
+-- ============ n) NFC (NTAG 424 DNA): firma, contador, enfriamiento y tope diario ============
+create function pg_temp.url_nfc(p_llave text, p_uid text, p_ctr int)
+returns text language plpgsql as $$
+declare
+  k bytea := decode(p_llave, 'hex');
+  ctr bytea := set_byte(set_byte(set_byte('\x000000'::bytea, 0, p_ctr % 256), 1, (p_ctr / 256) % 256), 2, (p_ctr / 65536) % 256);
+  plain bytea := '\xc7'::bytea || decode(p_uid, 'hex') || ctr || decode('0000000000', 'hex');
+  mac bytea := public._cmac(public._cmac(k, '\x3cc300010080'::bytea || decode(p_uid, 'hex') || ctr), ''::bytea);
+  corto text := ''; i int;
+begin
+  for i in 0..7 loop corto := corto || lpad(to_hex(get_byte(mac, i * 2 + 1)), 2, '0'); end loop;
+  return encode(extensions.encrypt_iv(plain, k, decode(repeat('00', 16), 'hex'), 'aes-cbc/pad:none'), 'hex') || ' ' || corto;
+end $$;
+
+create function pg_temp.nfc(p_llave text, p_ctr int, p_tarjeta uuid)
+returns json language plpgsql as $$
+declare u text := pg_temp.url_nfc(p_llave, '04de5f1eacc040', p_ctr);
+begin
+  return public.reclamar_nfc(split_part(u, ' ', 1), split_part(u, ' ', 2), p_tarjeta);
+end $$;
+
+select pg_temp.debe_err(public.crear_etiqueta('mala', 'cafe-a'), 'clave_invalida', 'n: crear_etiqueta con clave mala');
+select pg_temp.debe_err(public.crear_etiqueta('admin-prueba', 'no-existe'), 'no_existe', 'n: crear_etiqueta de cafeteria inexistente');
+select set_config('qz.llave', public.crear_etiqueta('admin-prueba', 'cafe-a')->>'llave', true);
+select pg_temp.chk(length(current_setting('qz.llave')) = 32, 'n: crear_etiqueta devuelve llave de 16 bytes en hex');
+select set_config('qz.nt1', gen_random_uuid()::text, true), set_config('qz.nt2', gen_random_uuid()::text, true);
+select pg_temp.chk(public.reclamar_nfc('00', '00', null)->>'error' = 'nfc_invalido', 'n: formato malo da nfc_invalido');
+select pg_temp.chk((public.reclamar_nfc(repeat('ab', 16), repeat('cd', 8), null))->>'error' = 'nfc_invalido', 'n: firma falsa da nfc_invalido');
+select pg_temp.debe_ok(pg_temp.nfc(current_setting('qz.llave'), 5, current_setting('qz.nt1')::uuid), 'n: primer toque suma sello');
+select pg_temp.chk((pg_temp.nfc(current_setting('qz.llave'), 5, current_setting('qz.nt1')::uuid))->>'repetido' = 'true', 'n: mismo enlace y tarjeta es repetido');
+select pg_temp.chk((pg_temp.nfc(current_setting('qz.llave'), 5, current_setting('qz.nt1')::uuid))->>'sellos' = '1', 'n: el repetido no suma otro sello');
+select pg_temp.debe_err(pg_temp.nfc(current_setting('qz.llave'), 5, current_setting('qz.nt2')::uuid), 'nfc_usado', 'n: enlace usado por otra tarjeta');
+select pg_temp.debe_err(pg_temp.nfc(current_setting('qz.llave'), 3, current_setting('qz.nt2')::uuid), 'nfc_usado', 'n: contador menor al ultimo');
+select pg_temp.debe_err(pg_temp.nfc(current_setting('qz.llave'), 6, current_setting('qz.nt1')::uuid), 'sello_reciente', 'n: enfriamiento de 15 min');
+update public.sellos set creado_en = now() - interval '20 minutes' where tarjeta_id = current_setting('qz.nt1')::uuid;
+select pg_temp.debe_err(pg_temp.nfc(current_setting('qz.llave'), 6, current_setting('qz.nt1')::uuid), 'nfc_usado', 'n: contador rechazado por enfriamiento no se reutiliza');
+select pg_temp.debe_ok(pg_temp.nfc(current_setting('qz.llave'), 7, current_setting('qz.nt1')::uuid), 'n: pasado el enfriamiento suma sello');
+update public.sellos set creado_en = now() - interval '20 minutes' where tarjeta_id = current_setting('qz.nt1')::uuid;
+select pg_temp.debe_ok(pg_temp.nfc(current_setting('qz.llave'), 8, current_setting('qz.nt1')::uuid), 'n: tercer sello NFC del dia');
+update public.sellos set creado_en = now() - interval '20 minutes' where tarjeta_id = current_setting('qz.nt1')::uuid;
+select pg_temp.debe_ok(pg_temp.nfc(current_setting('qz.llave'), 9, current_setting('qz.nt1')::uuid), 'n: cuarto sello NFC del dia');
+update public.sellos set creado_en = now() - interval '20 minutes' where tarjeta_id = current_setting('qz.nt1')::uuid;
+select pg_temp.debe_err(pg_temp.nfc(current_setting('qz.llave'), 10, current_setting('qz.nt1')::uuid), 'tope_dia', 'n: quinto sello NFC del dia');
+select pg_temp.debe_err(public.reclamar_nfc(split_part(pg_temp.url_nfc(encode(extensions.gen_random_bytes(16), 'hex'), '04de5f1eacc040', 20), ' ', 1),
+  split_part(pg_temp.url_nfc(encode(extensions.gen_random_bytes(16), 'hex'), '04de5f1eacc040', 20), ' ', 2), null), 'nfc_invalido', 'n: etiqueta con llave desconocida');
+
+-- n2) Cada etiqueta suma solo en su cafeteria: la de cafe-b no toca a cafe-a ni al reves.
+select set_config('qz.llave_b', public.crear_etiqueta('admin-prueba', 'cafe-b')->>'llave', true);
+select set_config('qz.nt3', gen_random_uuid()::text, true);
+select pg_temp.debe_ok(pg_temp.nfc(current_setting('qz.llave_b'), 1, current_setting('qz.nt3')::uuid), 'n2: toque en etiqueta de cafe-b');
+select pg_temp.chk((select count(*) from public.sellos s join public.cafeterias c on c.id = s.cafeteria_id
+  where s.tarjeta_id = current_setting('qz.nt3')::uuid and c.slug = 'cafe-b') = 1
+  and (select count(*) from public.sellos where tarjeta_id = current_setting('qz.nt3')::uuid) = 1,
+  'n2: el sello cae solo en cafe-b');
+select pg_temp.chk((select count(*) from public.sellos s join public.cafeterias c on c.id = s.cafeteria_id
+  where s.etiqueta_id is not null and c.slug = 'cafe-a') = 4, 'n2: cafe-a conserva solo sus 4 sellos NFC');
+
 -- ============ h) PIN incorrecto y bloqueo (al final: los 30 fallos bloquean todo) ============
 select pg_temp.debe_err(public.entrar('000000'), 'pin_invalido', 'h: entrar con PIN incorrecto');
 select pg_temp.debe_err(public.crear_venta('000000'), 'pin_invalido', 'h: crear_venta con PIN incorrecto');
