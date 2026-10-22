@@ -205,6 +205,31 @@
         <p id="config-msg" aria-live="polite" class="msg-slot"></p>
         <button id="btn-guardar" class="btn btn-oro guardar-pegajoso" type="submit">Guardar cambios</button>
       </form>
+
+      <section id="rec-bloque" class="superficie rec-bloque" aria-labelledby="rec-titulo">
+        <h3 id="rec-titulo">Recomendaciones</h3>
+        <p class="ayuda">Tus clientes invitan a sus amigos desde su tarjeta. Cuando un amigo hace su primera compra, el cliente que lo invitó gana sellos aquí.</p>
+        <label class="casilla-linea"><input id="rec-activo" type="checkbox"> Activar recomendaciones</label>
+        <label for="rec-sellos-amigo">Sellos al que recomienda, por cada amigo que compra</label>
+        <input id="rec-sellos-amigo" class="campo-c" type="number" min="0" max="5" step="1" inputmode="numeric">
+        <label for="rec-amigos">Amigos que compran para el bono</label>
+        <input id="rec-amigos" class="campo-c" type="number" min="1" max="50" step="1" inputmode="numeric">
+        <label for="rec-sellos-bono">Sellos de bono al llegar a esa cantidad</label>
+        <input id="rec-sellos-bono" class="campo-c" type="number" min="0" max="10" step="1" inputmode="numeric">
+        <p id="rec-msg" aria-live="polite" class="msg-slot"></p>
+        <button id="rec-guardar" class="btn btn-oro" type="button">Guardar recomendaciones</button>
+      </section>
+
+      <section id="av-bloque" class="superficie rec-bloque" aria-labelledby="av-titulo">
+        <h3 id="av-titulo">Avisos a tus clientes</h3>
+        <p class="ayuda">Llega como notificación a los celulares que activaron avisos y tienen sellos en tu cafetería. Máximo 3 al día.</p>
+        <label for="av-titulo-campo">Título</label>
+        <input id="av-titulo-campo" class="campo-c" type="text" maxlength="60" autocomplete="off" placeholder="Hoy café doble">
+        <label for="av-cuerpo">Mensaje</label>
+        <textarea id="av-cuerpo" class="campo-c" maxlength="160" rows="3" placeholder="Pasa por tu sello doble de 2 a 4 pm"></textarea>
+        <p id="av-msg" aria-live="polite" class="msg-slot"></p>
+        <button id="av-enviar" class="btn btn-oro" type="button">Enviar aviso</button>
+      </section>
     </section>
 
     <section id="sec-diseno" class="pila oculto" aria-label="Diseño">

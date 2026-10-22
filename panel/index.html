@@ -170,6 +170,17 @@
       </div>
     </section>
 
+    <section id="avisos" class="oculto">
+      <h2>Avisos a Quetzalitos</h2>
+      <div class="divisor" aria-hidden="true"><i></i></div>
+      <p class="letra-chica nota-seccion">Llega como notificación a los celulares que activaron avisos y tienen sellos de Quetzalitos. Máximo 5 al día.</p>
+      <label for="av-g-titulo">Título</label>
+      <input id="av-g-titulo" class="campo campo-texto" type="text" maxlength="60" autocomplete="off" placeholder="Novedades de la semana">
+      <label for="av-g-cuerpo">Mensaje</label>
+      <textarea id="av-g-cuerpo" class="campo campo-texto" maxlength="160" rows="3" placeholder="Visita cualquier cafetería participante"></textarea>
+      <button id="av-g-enviar" class="btn btn-oro" type="button">Enviar a todas las tarjetas</button>
+      <p id="av-g-msg" class="aviso oculto" role="status"></p>
+    </section>
     <section id="quetzalitos" class="oculto">
       <h2>Tarjeta Quetzalitos</h2>
       <div class="divisor" aria-hidden="true"><i></i></div>
@@ -227,6 +238,10 @@
       <button class="nav-item" type="button" data-seccion="quetzalitos">
         <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2z"/></svg>
         <span>Quetzalitos</span>
+      </button>
+      <button class="nav-item" type="button" data-seccion="avisos">
+        <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/></svg>
+        <span>Avisos</span>
       </button>
       <button id="salir" class="nav-item" type="button">
         <svg class="nav-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6l-6 6 6 6M4 12h16"/></svg>

@@ -117,6 +117,7 @@
   function mostrarSinTarjeta() {
     $("sin-tarjeta").classList.remove("oculto");
     $("tarjeta").classList.add("oculto");
+    $("btn-recomendar").classList.add("oculto");
   }
 
   // Color y logo del programa; sin valores válidos, los de la página. Con tema que trae acento, manda el tema.
@@ -273,6 +274,7 @@
     $("mensaje").classList.toggle("oculto", !config.mensaje);
     $("btn-premio").textContent = "Canjear: " + (config.premio || "tu premio");
     actualizarFranja();
+    $("btn-recomendar").classList.remove("oculto");
 
     var nombre = config.nombre || "Tu tarjeta de sellos";
     $("titulo").textContent = nombre;
@@ -514,6 +516,143 @@
     timerCuenta = null;
   }
 
+
+  // Recomendar: el enlace lleva el código de tu tarjeta; quien lo abre queda ligado a ti (sin sellos hasta su primera compra).
+  function registrarAmigo(codigo) {
+    if (!tarjetaId) { tarjetaId = nuevoId(); guardar(tarjetaId); }
+    var id = tarjetaId;
+    Q.rpc("registrar_referido", { p_codigo: codigo, p_tarjeta: id }).then(function (r) {
+      if (r.error === "red") { mostrarReintentar(true); return aviso(Q.msg(r.error), "error"); }
+      history.replaceState(null, "", location.pathname + location.search);
+      if (r.ok) aviso("¡Listo! Haz tu primera compra y tu amigo gana sellos.", "aviso");
+      else aviso(Q.msg(r.error), "error");
+      cargarTarjeta(id, true);
+    });
+  }
+
+  function hojaRecomendar(visible) {
+    $("hoja-rec").classList.toggle("oculto", !visible);
+    if (visible) $("btn-compartir").focus();
+  }
+  function pintarQrRec(texto) {
+    var el = $("qr-rec");
+    el.textContent = "";
+    if (typeof qrcode !== "function") return;
+    var qr = qrcode(0, "M");
+    qr.addData(texto);
+    qr.make();
+    el.innerHTML = qr.createSvgTag({ cellSize: 6, margin: 4, scalable: true });
+  }
+  function abrirRecomendar() {
+    if (!tarjetaId) return;
+    Q.rpc("codigo_recomendacion", { p_tarjeta: tarjetaId }).then(function (r) {
+      if (!r.ok) return aviso(Q.msg(r.error), "error");
+      var enlace = location.origin + location.pathname + "#ref=" + r.codigo;
+      $("enlace-rec").textContent = enlace;
+      pintarQrRec(enlace);
+      hojaRecomendar(true);
+    });
+  }
+  $("btn-recomendar").addEventListener("click", abrirRecomendar);
+  document.querySelectorAll("#hoja-rec [data-cerrar]").forEach(function (el) {
+    el.addEventListener("click", function () { hojaRecomendar(false); });
+  });
+  $("btn-compartir").addEventListener("click", function () {
+    var enlace = $("enlace-rec").textContent;
+    if (navigator.share) return navigator.share({ title: "Tarjeta de sellos", text: "Únete a mi tarjeta de sellos", url: enlace }).catch(function () {});
+    if (navigator.clipboard) navigator.clipboard.writeText(enlace).then(function () { aviso("Enlace copiado", "aviso"); }, function () {});
+  });
+
+
+  // ---- Avisos del celular (opcionales) y bienvenida en iPhone ----
+  var CLAVE_BIENVENIDA = "quetzalito.bienvenida";
+  var CLAVE_AVISOS = "quetzalito.avisos";
+  function marcado(clave) { try { return localStorage.getItem(clave) === "1"; } catch (e) { return false; } }
+  function marcar(clave) { try { localStorage.setItem(clave, "1"); } catch (e) { /* sin almacenamiento: volverá a preguntar */ } }
+  function esIphone() {
+    return /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  }
+  function enInicio() {
+    return (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+  }
+  function avisosPosibles() {
+    return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window && !!(window.QUETZALITO && QUETZALITO.vapid);
+  }
+  // Clave pública VAPID (base64url) → bytes.
+  function bytesDeClave(b64u) {
+    var b = atob(b64u.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((b64u.length + 3) % 4));
+    var out = new Uint8Array(b.length);
+    for (var i = 0; i < b.length; i++) out[i] = b.charCodeAt(i);
+    return out;
+  }
+  // Pide permiso, registra el service worker, se suscribe y guarda la suscripción en la tarjeta.
+  // Debe llamarse desde un toque del usuario (iOS lo exige).
+  function suscribirAvisos() {
+    if (!avisosPosibles()) return Promise.reject(new Error("no_soportado"));
+    if (!tarjetaId) { tarjetaId = nuevoId(); guardar(tarjetaId); }
+    var id = tarjetaId;
+    return Notification.requestPermission().then(function (perm) {
+      if (perm !== "granted") throw new Error("denegado");
+      return navigator.serviceWorker.register("sw.js");
+    }).then(function (reg) {
+      return reg.pushManager.getSubscription().then(function (s) {
+        return s || reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: bytesDeClave(QUETZALITO.vapid) });
+      });
+    }).then(function (sub) {
+      var j = sub.toJSON();
+      return Q.rpc("suscribir_aviso", { p_tarjeta: id, p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth });
+    }).then(function (r) {
+      if (!r.ok) throw new Error(r.error);
+      marcar(CLAVE_AVISOS);
+      return r;
+    });
+  }
+  function actualizarBotonAvisos() {
+    var mostrar = avisosPosibles() && !(esIphone() && !enInicio()) && Notification.permission !== "granted";
+    $("btn-avisos").classList.toggle("oculto", !mostrar);
+  }
+  function mostrarBienvenida(paso) {
+    $("sin-tarjeta").classList.add("oculto");
+    $("tarjeta").classList.add("oculto");
+    $("bienvenida").classList.remove("oculto");
+    $("bien-paso-1").classList.toggle("oculto", paso !== 1);
+    $("bien-paso-2").classList.toggle("oculto", paso !== 2);
+    $("bien-msg").textContent = "";
+  }
+  function ocultarBienvenida() { $("bienvenida").classList.add("oculto"); }
+  // Tras la bienvenida, la tarjeta (nueva o existente) reaparece.
+  function seguirTrasBienvenida() { marcar(CLAVE_BIENVENIDA); marcar(CLAVE_AVISOS); iniciar(); }
+
+  $("btn-avisos").addEventListener("click", function () {
+    suscribirAvisos().then(function () {
+      aviso("Listo: recibirás los avisos de tu tarjeta.", "aviso");
+      actualizarBotonAvisos();
+    }, function (err) {
+      aviso(err.message === "denegado" ? "No se activaron los avisos. Puedes intentarlo otra vez." : "Este navegador no permite avisos.", "error");
+    });
+  });
+  $("bien-listo-1").addEventListener("click", function () {
+    marcar(CLAVE_BIENVENIDA);
+    $("bien-paso-1").classList.add("oculto");
+    $("bien-paso-2").classList.remove("oculto");
+  });
+  $("bien-saltar-1").addEventListener("click", function () { marcar(CLAVE_BIENVENIDA); iniciar(); });
+  $("bien-saltar-2").addEventListener("click", seguirTrasBienvenida);
+  $("bien-avisos").addEventListener("click", function () {
+    var msg = $("bien-msg");
+    msg.textContent = "Activando…";
+    suscribirAvisos().then(seguirTrasBienvenida, function (err) {
+      msg.textContent = err.message === "denegado"
+        ? "No se activaron los avisos. Puedes activarlos después desde tu tarjeta."
+        : "Este navegador no permite avisos. Tu tarjeta sigue funcionando.";
+      marcar(CLAVE_AVISOS);
+      setTimeout(seguirTrasBienvenida, 1600);
+    });
+  });
+
+  // El service worker se registra en cuanto la página lo permite (no bloquea la tarjeta si falla).
+  if (avisosPosibles()) navigator.serviceWorker.register("sw.js").catch(function () {});
+
   function iniciar() {
     if (!storageDisponible()) {
       aviso("Tu navegador no permite guardar datos. No podremos recordar tu tarjeta en este teléfono.", "error");
@@ -522,8 +661,14 @@
     programa = leerPrograma();
     // Quien ya tiene tarjeta no debe leer «Escanea el QR…» mientras carga.
     if (tarjetaId) $("sin-tarjeta").classList.add("oculto");
-    var codigo = location.hash.slice(1);
-    if (codigo) return reclamarSello(codigo);
+    var h = location.hash.slice(1);
+    if (h.indexOf("ref=") === 0) return registrarAmigo(h.slice(4));
+    if (h) return reclamarSello(h);
+    // iPhone sin tarjeta: primero agregar a la pantalla de inicio y luego activar avisos; después, la tarjeta nueva.
+    if (!tarjetaId && esIphone() && !enInicio() && !marcado(CLAVE_BIENVENIDA)) return mostrarBienvenida(1);
+    if (!tarjetaId && esIphone() && enInicio() && !marcado(CLAVE_AVISOS)) return mostrarBienvenida(2);
+    ocultarBienvenida();
+    actualizarBotonAvisos();
     if (tarjetaId) {
       cargarTarjeta(tarjetaId);
       return cargarNombres();

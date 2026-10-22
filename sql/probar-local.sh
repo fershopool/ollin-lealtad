@@ -53,6 +53,8 @@ SQL
 
 # Esquema y pruebas de transaccion
 psql -d "$BD" -X -v ON_ERROR_STOP=1 -q -f "$DIR/quetzalito.sql" || fallo "quetzalito.sql no carga"
+psql -d "$BD" -X -v ON_ERROR_STOP=1 -q -f "$DIR/recomendar.sql" || fallo "recomendar.sql no carga"
+psql -d "$BD" -X -v ON_ERROR_STOP=1 -q -f "$DIR/avisos.sql" || fallo "avisos.sql no carga"
 psql -d "$BD" -X -v ON_ERROR_STOP=1 -q -f "$DIR/pruebas.sql" || fallo "pruebas.sql fallo (ver FALLA arriba)"
 
 # ---------- Carrera 1: 20 reclamos del mismo token ----------

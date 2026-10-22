@@ -753,6 +753,50 @@ select pg_temp.chk(public.llave_de_uid('admin-prueba', '0A0B0C0D0E0F10')->>'llav
 select pg_temp.chk((select count(*) from public.sellos s join public.cafeterias c on c.id = s.cafeteria_id
   where s.etiqueta_id is not null and c.slug = 'cafe-a') = 4, 'n2: cafe-a conserva solo sus sellos NFC');
 
+-- ============ r) Recomendaciones: código, amigo, compra real, bono y reglas del panel ============
+insert into public.tarjetas (id) values ('aaaaaaaa-0000-0000-0000-000000000001'), ('aaaaaaaa-0000-0000-0000-000000000002'), ('aaaaaaaa-0000-0000-0000-000000000003');
+update public.cafeterias set rec_amigos = 2, rec_sellos_amigo = 1, rec_sellos_bono = 1 where slug = 'cafe-a';
+select set_config('qz.cod', public.codigo_recomendacion('aaaaaaaa-0000-0000-0000-000000000001')->>'codigo', true);
+select pg_temp.chk(length(current_setting('qz.cod')) = 12, 'r: el código tiene 12 caracteres');
+select pg_temp.chk(public.codigo_recomendacion('aaaaaaaa-0000-0000-0000-000000000001')->>'codigo' = current_setting('qz.cod'), 'r: el código no cambia al pedirlo otra vez');
+select pg_temp.debe_err(public.registrar_referido(current_setting('qz.cod'), 'aaaaaaaa-0000-0000-0000-000000000001'), 'propia', 'r: no te puedes recomendar a ti mismo');
+select pg_temp.debe_err(public.registrar_referido('000000000000', 'aaaaaaaa-0000-0000-0000-000000000002'), 'codigo_invalido', 'r: código inexistente');
+select pg_temp.debe_ok(public.registrar_referido(current_setting('qz.cod'), 'aaaaaaaa-0000-0000-0000-000000000002'), 'r: el amigo B se registra');
+select pg_temp.debe_err(public.registrar_referido(current_setting('qz.cod'), 'aaaaaaaa-0000-0000-0000-000000000002'), 'ya_registrado', 'r: B no se registra dos veces');
+select set_config('qz.vb', pg_temp.nueva_venta('111111'), true);
+select pg_temp.reclamar_ok(current_setting('qz.vb'), 'aaaaaaaa-0000-0000-0000-000000000002', 'r: B hace su primera compra');
+select pg_temp.chk(pg_temp.saldo('aaaaaaaa-0000-0000-0000-000000000001') = 1, 'r: el recomendador gana 1 sello con el primer amigo que compra');
+select pg_temp.chk((select acreditado_en is not null and cafeteria_id is not null from public.referidos where tarjeta_id = 'aaaaaaaa-0000-0000-0000-000000000002'), 'r: B queda acreditado y pagado');
+select pg_temp.debe_ok(public.registrar_referido(current_setting('qz.cod'), 'aaaaaaaa-0000-0000-0000-000000000003'), 'r: el amigo C se registra');
+select set_config('qz.vc', pg_temp.nueva_venta('111111'), true);
+select pg_temp.reclamar_ok(current_setting('qz.vc'), 'aaaaaaaa-0000-0000-0000-000000000003', 'r: C hace su primera compra');
+select pg_temp.chk(pg_temp.saldo('aaaaaaaa-0000-0000-0000-000000000001') = 3, 'r: con el segundo amigo: +1 por amigo y +1 de bono (cada 2)');
+select pg_temp.chk(public.leer_recomendacion('111111')->>'amigos' = '2', 'r: el panel lee las reglas de la cafetería');
+select pg_temp.chk(public.guardar_recomendacion('111111', true, 0, 1, 1)->>'error' = 'config_invalida', 'r: el panel rechaza amigos fuera de rango');
+select pg_temp.debe_ok(public.guardar_recomendacion('111111', true, 3, 1, 1), 'r: el panel guarda reglas válidas');
+
+-- ============ s) Avisos: suscripciones, audiencia por cafetería y Quetzalitos, límites ============
+insert into public.tarjetas (id) values ('bbbbbbbb-0000-0000-0000-000000000001'), ('bbbbbbbb-0000-0000-0000-000000000002');
+select pg_temp.debe_ok(public.suscribir_aviso('bbbbbbbb-0000-0000-0000-000000000001', 'https://push.test/x1', 'p256dh-1', 'auth-1'), 's: la tarjeta X se suscribe');
+select pg_temp.debe_ok(public.suscribir_aviso('bbbbbbbb-0000-0000-0000-000000000001', 'https://push.test/x1', 'p256dh-2', 'auth-2'), 's: el mismo navegador se actualiza, no se duplica');
+select pg_temp.chk((select count(*) from public.suscripciones where endpoint = 'https://push.test/x1') = 1, 's: una sola suscripción por navegador');
+select pg_temp.debe_err(public.suscribir_aviso('bbbbbbbb-0000-0000-0000-000000000001', 'x', null, 'auth'), 'datos_invalidos', 's: datos de suscripción incompletos');
+select pg_temp.debe_ok(public.suscribir_aviso('bbbbbbbb-0000-0000-0000-000000000002', 'https://push.test/y1', 'p256dh-3', 'auth-3'), 's: la tarjeta Y se suscribe sin sellos');
+select set_config('qz.vx', pg_temp.nueva_venta('111111'), true);
+select pg_temp.reclamar_ok(current_setting('qz.vx'), 'bbbbbbbb-0000-0000-0000-000000000001', 's: X compra en Cafe A');
+select set_config('qz.av', (public.enviar_aviso_cafe('111111', 'Hoy café gratis', 'Pasa por tu sello doble'))->>'aviso', true);
+select pg_temp.chk(exists (select 1 from public.audiencia_aviso(current_setting('qz.av')::uuid) where endpoint = 'https://push.test/x1'), 's: el aviso de la cafetería llega a sus clientes');
+select pg_temp.chk(not exists (select 1 from public.audiencia_aviso(current_setting('qz.av')::uuid) where endpoint = 'https://push.test/y1'), 's: no llega a tarjetas sin sellos en la cafetería');
+select pg_temp.debe_err(public.enviar_aviso_cafe('111111', '', 'texto'), 'aviso_invalido', 's: título vacío');
+select pg_temp.debe_ok(public.enviar_aviso_cafe('111111', 'Aviso 2', 'Segundo aviso del día'), 's: segundo aviso del día');
+select pg_temp.debe_ok(public.enviar_aviso_cafe('111111', 'Aviso 3', 'Tercer aviso del día'), 's: tercer aviso del día');
+select pg_temp.debe_err(public.enviar_aviso_cafe('111111', 'Aviso 4', 'Cuarto aviso del día'), 'limite_diario', 's: máximo 3 avisos de cafetería al día');
+select pg_temp.debe_ok(public.enviar_aviso_general('admin-prueba', 'Quetzalitos', 'Novedades de la semana'), 's: aviso general de Quetzalitos');
+select set_config('qz.ag', (public.enviar_aviso_general('admin-prueba', 'General 2', 'Otro aviso'))->>'aviso', true);
+select pg_temp.chk(exists (select 1 from public.audiencia_aviso(current_setting('qz.ag')::uuid) where endpoint = 'https://push.test/x1'), 's: el aviso general llega a las tarjetas de Quetzalitos');
+select pg_temp.debe_ok(public.quitar_aviso('https://push.test/x1'), 's: un navegador se da de baja');
+select pg_temp.chk(not exists (select 1 from public.audiencia_aviso(current_setting('qz.av')::uuid) where endpoint = 'https://push.test/x1'), 's: ya no recibe avisos');
+
 -- ============ h) PIN incorrecto y bloqueo (al final: los 30 fallos bloquean todo) ============
 select pg_temp.debe_err(public.entrar('000000'), 'pin_invalido', 'h: entrar con PIN incorrecto');
 select pg_temp.debe_err(public.crear_venta('000000'), 'pin_invalido', 'h: crear_venta con PIN incorrecto');

@@ -70,7 +70,7 @@
 
   // Menú flotante: una sección a la vez. Solo se ven con la clave admin ya validada.
   // «#eliminar» (enlace viejo) abre Editar, donde ahora vive la zona de peligro.
-  const SECCIONES = ['metricas', 'nueva', 'editar', 'quetzalitos'];
+  const SECCIONES = ['metricas', 'nueva', 'editar', 'quetzalitos', 'avisos'];
   const ALIAS = { eliminar: 'editar' };
   const seccionMetricas = $('metricas');
   const menu = $('menu');
@@ -109,7 +109,7 @@
   }
 
   function pintarSeccion() {
-    const todas = { metricas: seccionMetricas, nueva: seccionNueva, editar: seccionEditar, quetzalitos: seccionQ };
+    const todas = { metricas: seccionMetricas, nueva: seccionNueva, editar: seccionEditar, quetzalitos: seccionQ, avisos: $('avisos') };
     for (const s of SECCIONES) todas[s].classList.toggle('oculto', !adentro || s !== seccion);
     for (const b of botonesMenu) {
       const activa = b.dataset.seccion === seccion;
@@ -554,6 +554,31 @@
     rellenarEditar();
     pintarVencEditar();
     avisar(avisoPago, '', false);
+  });
+
+  // Avisos a todas las tarjetas de Quetzalitos (la clave admin sigue solo en memoria).
+  $('av-g-enviar').addEventListener('click', async () => {
+    const titulo = $('av-g-titulo').value.trim();
+    const cuerpo = $('av-g-cuerpo').value.trim();
+    const msg = $('av-g-msg');
+    const mostrarMsg = (texto, tipo) => { msg.textContent = texto; msg.className = tipo === 'error' ? 'error' : 'aviso'; };
+    if (!clave) return;
+    if (!titulo || !cuerpo) return mostrarMsg('Escribe un título y un mensaje.', 'error');
+    const boton = $('av-g-enviar');
+    boton.disabled = true;
+    mostrarMsg('Enviando…', 'aviso');
+    const r = await Q.rpc('enviar_aviso_general', { p_clave: clave, p_titulo: titulo, p_cuerpo: cuerpo });
+    if (!r || !r.ok) {
+      boton.disabled = false;
+      if (r && r.error === 'clave_invalida') { clave = null; mostrarAdmin(false); return mostrarError(r.error); }
+      return mostrarMsg(Q.msg((r && r.error) || 'red'), 'error');
+    }
+    const e = await Q.enviarAviso(r.aviso);
+    boton.disabled = false;
+    if (!e.ok) return mostrarMsg('El aviso quedó guardado, pero no se envió. Intenta de nuevo en unos minutos.', 'error');
+    mostrarMsg('Aviso enviado a ' + e.enviados + ' celular' + (e.enviados === 1 ? '' : 'es') + '.', 'aviso');
+    $('av-g-titulo').value = '';
+    $('av-g-cuerpo').value = '';
   });
 
   formNueva.addEventListener('submit', async (e) => {

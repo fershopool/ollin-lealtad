@@ -378,7 +378,69 @@
       if (on) b.setAttribute("aria-current", "page");
       else b.removeAttribute("aria-current");
     });
+    if (s === "tarjeta") cargarRec();
   }
+
+  // ---- Recomendaciones: reglas editables con el PIN de la cafetería ----
+  function pintarRec(r) {
+    $("rec-activo").checked = !!r.activo;
+    $("rec-amigos").value = r.amigos;
+    $("rec-sellos-amigo").value = r.sellos_amigo;
+    $("rec-sellos-bono").value = r.sellos_bono;
+  }
+  function cargarRec() {
+    Q.rpc("leer_recomendacion", { p_pin: pinActual }).then(function (r) {
+      if (r.ok) return pintarRec(r);
+      if (r.error === "pin_invalido") return salirAlInicio();
+      mensaje($("rec-msg"), Q.msg(r.error), "error");
+    });
+  }
+  // ---- Avisos a los clientes de esta cafetería ----
+  $("av-enviar").addEventListener("click", function () {
+    var titulo = $("av-titulo-campo").value.trim();
+    var cuerpo = $("av-cuerpo").value.trim();
+    if (!titulo || !cuerpo) return mensaje($("av-msg"), "Escribe un título y un mensaje.", "error");
+    var boton = $("av-enviar");
+    boton.disabled = true;
+    mensaje($("av-msg"), "Enviando…", "aviso");
+    Q.rpc("enviar_aviso_cafe", { p_pin: pinActual, p_titulo: titulo, p_cuerpo: cuerpo }).then(function (r) {
+      if (!r.ok) {
+        boton.disabled = false;
+        if (r.error === "pin_invalido") return salirAlInicio();
+        return mensaje($("av-msg"), Q.msg(r.error), "error");
+      }
+      return Q.enviarAviso(r.aviso).then(function (e) {
+        boton.disabled = false;
+        if (!e.ok) return mensaje($("av-msg"), "El aviso quedó guardado, pero no se envió. Intenta de nuevo en unos minutos.", "error");
+        mensaje($("av-msg"), "Aviso enviado a " + e.enviados + " celular" + (e.enviados === 1 ? "" : "es") + ".", "aviso");
+        $("av-titulo-campo").value = "";
+        $("av-cuerpo").value = "";
+      });
+    }).catch(function () {
+      boton.disabled = false;
+      mensaje($("av-msg"), "No se pudo enviar. Revisa tu conexión e intenta de nuevo.", "error");
+    });
+  });
+
+  $("rec-guardar").addEventListener("click", function () {
+    var amigos = Number($("rec-amigos").value);
+    var sa = Number($("rec-sellos-amigo").value);
+    var sb = Number($("rec-sellos-bono").value);
+    if (!(amigos >= 1 && amigos <= 50 && sa >= 0 && sa <= 5 && sb >= 0 && sb <= 10)) {
+      return mensaje($("rec-msg"), "Revisa los números: amigos de 1 a 50, sellos por amigo de 0 a 5 y bono de 0 a 10.", "error");
+    }
+    var boton = $("rec-guardar");
+    boton.disabled = true;
+    mensaje($("rec-msg"), "Guardando…", "aviso");
+    Q.rpc("guardar_recomendacion", {
+      p_pin: pinActual, p_activo: $("rec-activo").checked, p_amigos: amigos, p_sellos_amigo: sa, p_sellos_bono: sb
+    }).then(function (r) {
+      boton.disabled = false;
+      if (r.ok) { pintarRec(r); return mensaje($("rec-msg"), "Guardado", "aviso"); }
+      if (r.error === "pin_invalido") return salirAlInicio();
+      mensaje($("rec-msg"), Q.msg(r.error), "error");
+    });
+  });
 
   function mostrarPanel(r) {
     nombreNegocio = r.cafeteria || "";

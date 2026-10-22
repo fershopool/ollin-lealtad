@@ -21,6 +21,10 @@
     clave_invalida: "Clave incorrecta.",
     datos_invalidos: "Revisa el nombre (de 2 a 80 caracteres) y la escuela (opcional, hasta 40).",
     uid_repetido: "Esa etiqueta ya está registrada. Usa Editar en la app.",
+    codigo_invalido: "Este enlace de recomendación ya no es válido.",
+    propia: "No puedes recomendarte a ti mismo.",
+    ya_registrado: "Ya te registraste con una recomendación.",
+    ya_tiene_sellos: "Esta tarjeta ya tiene sellos; la recomendación es solo para tarjetas nuevas.",
     pin_formato: "El PIN debe tener exactamente 6 números.",
     pin_repetido: "Ese PIN ya lo usa otra cafetería. Elige otro (si acabas de crearla, revisa la tabla).",
     tope_invalido: "El máximo de QR por hora debe ser un número entero de 1 a 1000.",
@@ -85,6 +89,21 @@
           clearTimeout(tiempo);
           return r;
         });
+    },
+
+    // Envía un aviso ya creado por la base de datos (el PIN o la clave admin ya se validaron allí).
+    // Resuelve con {ok, enviados} o {ok:false, error}.
+    enviarAviso: function (id) {
+      var key = QUETZALITO.key;
+      var cabeceras = { "Content-Type": "application/json", apikey: key };
+      if (key.indexOf("eyJ") === 0) cabeceras.Authorization = "Bearer " + key;
+      return fetch(QUETZALITO.url + "/functions/v1/enviar-avisos", {
+        method: "POST",
+        headers: cabeceras,
+        body: JSON.stringify({ aviso: id })
+      })
+        .then(function (res) { return res.ok ? res.json() : { ok: false, error: "red" }; })
+        .catch(function () { return { ok: false, error: "red" }; });
     },
 
     // URL absoluta del logo de un negocio; sin logo, el de Quetzalitos.

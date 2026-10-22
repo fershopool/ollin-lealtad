@@ -384,3 +384,9 @@ select.campo-c option { background: var(--selva); color: var(--hielo); }
 #metricas-msg.msg-slot { min-height: 0; }
 #metricas-msg.msg-slot:not(:empty) { min-height: 28px; }
 #sec-resumen > #metricas-msg:empty { margin-top: calc(-1 * var(--gap, 16px)); }
+
+/* Recomendaciones: bloque dentro de Mi tarjeta, con su propio guardado. */
+.rec-bloque { margin-top: 16px; display: flex; flex-direction: column; gap: 6px; }
+.rec-bloque h3 { margin: 0; }
+.casilla-linea { display: flex; align-items: center; gap: 10px; margin: 6px 0 2px; font-weight: 600; }
+.casilla-linea input { width: 22px; height: 22px; margin: 0; accent-color: var(--acento, #C6FF7A); }

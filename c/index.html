@@ -10,7 +10,7 @@
   <link rel="apple-touch-icon" href="../img/icono.png">
   <link rel="stylesheet" href="../fonts/fonts.css?v=10">
   <link rel="stylesheet" href="../estilo.css?v=10">
-  <link rel="stylesheet" href="c.css?v=16">
+  <link rel="stylesheet" href="c.css?v=18">
   <link rel="stylesheet" href="fiesta.css?v=13">
 </head>
 <body>
@@ -57,6 +57,8 @@
         <button id="btn-premio" class="btn btn-oro btn-premio oculto" type="button">Canjear mi premio</button>
       </div>
       <p id="mensaje" class="letra-chica oculto"></p>
+      <button id="btn-recomendar" class="btn btn-claro btn-chico btn-recomendar oculto" type="button">Recomienda y gana</button>
+      <button id="btn-avisos" class="btn btn-claro btn-chico btn-avisos oculto" type="button">Activar avisos</button>
     </section>
   </div>
 
@@ -67,9 +69,45 @@
   </footer>
 </main>
 
+<section id="bienvenida" class="marco bienvenida oculto" aria-labelledby="bien-titulo">
+  <p class="rotulo">Antes de empezar</p>
+  <h2 id="bien-titulo">Tu tarjeta, siempre a la mano</h2>
+  <div id="bien-paso-1" class="pasos">
+    <p>Agrega esta página a tu pantalla de inicio para usarla como app:</p>
+    <ol class="lista-pasos">
+      <li>Toca el botón <strong>Compartir</strong> de Safari.</li>
+      <li>Elige <strong>Agregar a pantalla de inicio</strong>.</li>
+      <li>Abre Quetzalitos desde ese ícono.</li>
+    </ol>
+    <button id="bien-listo-1" class="btn btn-oro" type="button">Ya la agregué</button>
+    <button id="bien-saltar-1" class="btn btn-claro btn-chico" type="button">Ahora no</button>
+  </div>
+  <div id="bien-paso-2" class="pasos oculto">
+    <p>Activa los avisos para enterarte de promociones y de tus sellos. Puedes cambiarlo cuando quieras.</p>
+    <button id="bien-avisos" class="btn btn-oro" type="button">Activar avisos</button>
+    <button id="bien-saltar-2" class="btn btn-claro btn-chico" type="button">Ahora no</button>
+    <p id="bien-msg" class="letra-chica" aria-live="polite"></p>
+  </div>
+</section>
+<div id="hoja-rec" class="hoja oculto" role="dialog" aria-modal="true" aria-labelledby="hoja-titulo">
+  <div class="hoja-fondo" data-cerrar></div>
+  <div class="hoja-panel">
+    <p class="rotulo">Recomendar</p>
+    <h2 id="hoja-titulo">Invita a un amigo</h2>
+    <p class="letra-chica">Que escanee este código con su celular. Cuando haga su primera compra, tú ganas sellos.</p>
+    <div id="qr-rec" class="qr-rec" aria-label="Código para recomendar"></div>
+    <p id="enlace-rec" class="enlace-rec"></p>
+    <div class="fila-hoja">
+      <button id="btn-compartir" class="btn btn-oro btn-chico" type="button">Compartir</button>
+      <button id="btn-cerrar-hoja" class="btn btn-claro btn-chico" type="button" data-cerrar>Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <script src="../config.js?v=10"></script>
 <script src="../lib.js?v=10"></script>
+<script src="../vendor/qrcode.js"></script>
 <script src="fiesta.js?v=13"></script>
-<script src="c.js?v=16"></script>
+<script src="c.js?v=18"></script>
 </body>
 </html>
