@@ -23,8 +23,7 @@
   const btnCrear = $('n-crear');
   const okNueva = $('n-ok');
   const errorNueva = $('n-error');
-  const inNfc = $('n-nfc');
-  const resNfcNueva = $('n-nfc-res');
+  const slugNueva = $('n-slug-res');
   const listaEscuelas = $('escuelas');
   const formEliminar = $('form-eliminar');
   const selCual = $('e-cual');
@@ -214,6 +213,7 @@
 
   // Rellena la sección de edición con la cafetería elegida (nombre real, sin el texto «desactivada»).
   function rellenarEditar() {
+    mostrarSlugEditar();
     const f = filasActuales.find((x) => x.slug === selMCual.value);
     inMNombre.value = f ? f.cafeteria : '';
     inMEscuela.value = f ? f.escuela : '';
@@ -514,24 +514,18 @@
     return fila;
   }
 
-  async function altaEtiqueta(slug, destino) {
-    destino.replaceChildren('Creando etiqueta…');
-    destino.classList.remove('oculto');
-    const r = await Q.rpc('crear_etiqueta', { p_clave: clave, p_slug: slug });
-    if (!r || !r.ok) {
-      const codigo = (r && r.error) || 'red';
-      destino.textContent = 'No se creó la etiqueta NFC: ' + Q.msg(codigo);
-      return;
-    }
-    const url = new URL('../c/', location.href).href + '#uid=' + '0'.repeat(14) + '&ctr=' + '0'.repeat(6) + '&cmac=' + '0'.repeat(16);
+  // Código de la cafetería (slug) con botón de copiar, para pegarlo en la app Etiquetas Ollin.
+  function mostrarSlug(destino, slug, texto) {
     const p = document.createElement('p');
-    p.textContent = 'Etiqueta NFC de «' + r.cafeteria + '» creada. Anota la llave: no se puede volver a ver. Grábala en la etiqueta con esta URL (los ceros los reemplaza la etiqueta).';
-    destino.replaceChildren(p, campoCopiar('Llave AES-128 (hex)', r.llave), campoCopiar('URL a grabar', url));
+    p.textContent = texto;
+    destino.replaceChildren(p, campoCopiar('Código de la cafetería', slug));
+    destino.classList.remove('oculto');
   }
-
-  $('m-nfc').addEventListener('click', () => {
-    if (clave && selMCual.value) altaEtiqueta(selMCual.value, $('m-nfc-res'));
-  });
+  function mostrarSlugEditar() {
+    const el = $('m-nfc-res');
+    if (selMCual.value) mostrarSlug(el, selMCual.value, 'Código de esta cafetería:');
+    else el.replaceChildren();
+  }
 
   // PIN de 6 dígitos sin sesgo: 4 294 800 000 = 4772 × 900 000 (se descarta lo que sobra de los 2^32 valores).
   function pinAleatorio() {
@@ -550,9 +544,9 @@
 
   selMCual.addEventListener('change', () => {
     inMPin.value = ''; // un PIN escrito para una cafetería no se aplica a otra
-    $('m-nfc-res').classList.add('oculto'); // la llave mostrada era de la cafetería anterior
     rellenarEditar();
     pintarVencEditar();
+    mostrarSlugEditar();
     avisar(avisoPago, '', false);
   });
 
@@ -586,7 +580,7 @@
     if (!clave) return;
     const pin = inPin.value;
     okNueva.classList.add('oculto');
-    resNfcNueva.classList.add('oculto');
+    slugNueva.classList.add('oculto');
     errorNueva.classList.add('oculto');
     okElim.classList.add('oculto');
     errorElim.classList.add('oculto');
@@ -621,7 +615,7 @@
     ultimaAlta = res.slug;
     okNueva.classList.remove('oculto');
     okNueva.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-    if (inNfc.checked) altaEtiqueta(res.slug, resNfcNueva);
+    mostrarSlug(slugNueva, res.slug, 'Código para la app Etiquetas Ollin:');
     inNombre.value = '';
     inPin.value = ''; // la escuela se queda: suele darse de alta más de una cafetería seguida
     consultar(true);
