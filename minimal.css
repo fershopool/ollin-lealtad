@@ -1,0 +1,208 @@
+/* Capa minimalista: misma paleta, grecas, logos y tipografías; sin brillos, degradados ni sombras de color.
+   Se carga al final de cada página para sobreponerse a estilo.css y a la hoja de la pantalla. */
+:root {
+  --borde: rgba(255, 255, 255, .10);
+  --superficie: rgba(255, 255, 255, .04);
+  --superficie-2: rgba(255, 255, 255, .07);
+  --sombra-card: none;
+  --r-card: 16px;
+  --brillo-1: transparent; --brillo-2: transparent; --brillo-3: transparent; --brillo-4: transparent;
+}
+
+/* Fondo plano; la trama de grecas queda apenas insinuada */
+body { background: var(--noche); }
+body::before { opacity: .035; }
+body::after { opacity: .12; }
+
+/* Tipografía más sobria */
+h1 { text-shadow: none; font-size: clamp(1.7rem, 6.6vw, 2.1rem); letter-spacing: 0; }
+h2 { letter-spacing: 0; }
+label { letter-spacing: .1em; font-size: .72rem; color: var(--niebla); }
+.rotulo { letter-spacing: .2em; font-size: .7rem; }
+
+/* Greca: un solo tono dorado, sin sombra rosa */
+.greca, .cargador-greca { background: var(--naranja); opacity: .9; }
+.cabecera { box-shadow: none; }
+.divisor i { box-shadow: none; }
+
+/* Logo: disco plano con filete dorado, sin orbe luminoso */
+.logo-halo::before { border: 2px solid var(--naranja); background: var(--hielo); box-shadow: none; }
+.logo-halo::after { border: 1px dashed color-mix(in srgb, var(--naranja) 55%, transparent); }
+.logo-halo, .cargador-anillo { animation: none; }
+.cargador-anillo { box-shadow: 0 0 0 1px color-mix(in srgb, var(--naranja) 45%, transparent); }
+
+/* Botones: sólidos y planos */
+.btn, .btn-oro, .btn-rosa, .btn-azul, .btn-premio, .btn-imprimir {
+  border-radius: 12px; box-shadow: none; letter-spacing: .01em;
+  transition: background-color .15s ease, transform .1s ease;
+}
+.btn { background: var(--jade); }
+.btn:hover { filter: none; background: var(--jade-osc); }
+.btn-oro, .btn-rosa { background: var(--rosa); }
+.btn-oro:hover, .btn-rosa:hover { background: var(--rosa-osc); }
+.btn-azul { background: var(--azul-med); }
+.btn-azul:hover { background: var(--azul-osc); }
+.btn-claro { background: transparent; box-shadow: inset 0 0 0 1px var(--borde); backdrop-filter: none; }
+.btn-claro:hover { background: var(--superficie-2); }
+.btn-premio { background: var(--rosa); animation: none; }
+.btn:active { transform: scale(.99); }
+.btn:focus-visible { outline: 2px solid var(--naranja); outline-offset: 2px; }
+.btn-con-icono::after { opacity: .14; }
+.btn-con-icono::before { background: var(--hielo); }
+
+/* Campos */
+.campo { border: 1px solid var(--borde); border-radius: 12px; background: rgba(0, 0, 0, .25); box-shadow: none; }
+.campo:focus, #codigo.campo:focus, #codigo.campo:focus-visible { border-color: var(--naranja); box-shadow: 0 0 0 3px color-mix(in srgb, var(--naranja) 22%, transparent); }
+#codigo.campo { box-shadow: none; }
+
+/* Marcos y tarjetas: filete fino, esquina suave */
+.marco, .tarjeta { clip-path: none; background: var(--superficie); border: 1px solid var(--borde); border-radius: 16px; }
+.marco::before, .tarjeta::before { display: none; }
+.superficie { backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 16px; }
+
+/* Mensajes */
+.aviso, .error, .tablilla { border-radius: 12px; background: var(--superficie-2); box-shadow: inset 0 0 0 1px var(--borde); backdrop-filter: none; font-weight: 500; }
+.aviso::before, .error::before, .tablilla::before { background: var(--naranja); width: 3px; }
+.error { background: color-mix(in srgb, var(--alerta) 22%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--alerta) 55%, transparent); }
+.error::before { background: var(--alerta); }
+.aviso.fiesta { background: var(--rosa); box-shadow: none; animation: none; }
+#msg.aviso, #msg.error { box-shadow: inset 0 0 0 1px var(--borde); }
+
+/* QR, éxito y placa: tarjeta plana */
+.qr-caja { border: 1px solid var(--borde); background: #FFFFFF; border-radius: 14px; box-shadow: none; }
+.exito, .placa { background: var(--superficie); border: 1px solid var(--borde); border-radius: 16px; box-shadow: none; }
+.exito::before { box-shadow: 0 0 0 2px var(--naranja); animation: none; }
+
+/* Texto con degradado → color sólido */
+.cuenta, .codigo { background: none; -webkit-text-fill-color: currentColor; color: var(--naranja-claro); }
+
+/* Barras de progreso */
+.barra { height: 6px; box-shadow: none; background: var(--superficie-2); }
+.barra i { background: var(--naranja); box-shadow: none; }
+
+/* Sellos: ficha limpia, sin resplandor */
+.sello { background: var(--superficie); box-shadow: inset 0 0 0 1px var(--borde); }
+.sello.lleno { background: var(--hielo); box-shadow: 0 0 0 2px var(--ficha); }
+.sello.lleno::after { display: none; }
+.sello.premio { border: 1px solid color-mix(in srgb, var(--naranja) 55%, transparent); background: var(--superficie); box-shadow: none; }
+.sello.premio::before { box-shadow: 0 0 0 2px var(--naranja); }
+.sello.premio.listo { background: var(--rosa); animation: none; box-shadow: none; }
+.sello.premio.listo::before { box-shadow: 0 0 0 2px #FFFFFF; animation: none; }
+
+/* Menú inferior */
+.nav-flotante { background: rgba(4, 23, 15, .92); border-radius: 20px; box-shadow: 0 0 0 1px var(--borde); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.nav-item { border-radius: 14px; }
+.nav-item.activo, .nav-item[aria-current="page"] { background: var(--superficie-2); color: var(--naranja-claro); box-shadow: none; }
+
+/* Tablas, métricas y paneles */
+.panel-tabla, .vista-superficie, .tarjeta-mens { backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; border: 1px solid var(--borde); }
+.panel-tabla th:first-child, .panel-tabla td:first-child { box-shadow: none; }
+.panel-tabla .total td { background: var(--superficie-2); color: var(--naranja-claro); }
+.panel-tabla .total td:first-child { background: var(--selva-2); }
+.tarjeta-vista { background: var(--superficie); box-shadow: inset 0 0 0 1px var(--borde); }
+.marca { box-shadow: 0 0 0 1px var(--naranja); }
+.medallon { box-shadow: none; }
+.seg-op[aria-pressed="true"] { background: var(--naranja); color: var(--noche); box-shadow: none; }
+.chip { box-shadow: none; }
+
+/* Caja y negocio: insignias y tarjetas de acción planas */
+.acciones .btn, .caja-cab .btn { backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: inset 0 0 0 1px var(--borde); background: var(--superficie); }
+.acciones .btn:hover { background: var(--superficie-2); }
+.insignia, .insignia.oro, .insignia.jade, .insignia.terra { box-shadow: none; }
+.insignia { background: var(--jade); }
+.insignia.oro { background: var(--naranja-osc); }
+.insignia.terra { background: var(--rosa); }
+.acciones #btn-venta-q { --insignia: var(--naranja-osc); }
+.acciones #btn-canje { --insignia: var(--jade); }
+.acciones #btn-panel { --insignia: var(--selva-2); }
+.acciones #btn-control { --insignia: var(--azul); }
+#venta .barra i { background: var(--naranja); }
+body.caja .exito::before, body.caja .logo-halo::after { animation: none; }
+.gr-barra--pico { filter: none; }
+
+/* Tarjeta del cliente (c/): cristal → superficie plana */
+.mini { background: var(--superficie) !important; box-shadow: inset 0 0 0 1px var(--borde) !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+.hoja-panel { background: var(--selva) !important; box-shadow: 0 -1px 0 var(--borde) !important; }
+.hoja-fondo { backdrop-filter: none; -webkit-backdrop-filter: none; }
+.mini.activa { transform: none !important; background: var(--superficie-2) !important; box-shadow: inset 0 0 0 1.5px var(--tono) !important; }
+.mini-barra i { background: var(--tono); box-shadow: none; }
+.mini-ico { box-shadow: 0 0 0 1.5px var(--tono); }
+.qr-rec svg { box-shadow: 0 0 0 2px var(--naranja); }
+.banda-avance { background: color-mix(in srgb, var(--naranja) 40%, transparent); }
+
+@media (prefers-reduced-motion: reduce) { .btn { transition: none; } }
+
+/* ===== Pulido «elegante»: menos ornamento, más aire, tipografía sans, un solo acento ===== */
+body { font-size: clamp(15px, 4vw, 16px); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+body::before { display: none; }           /* sin trama */
+body::after { opacity: .06; }
+h1, h2, h3, .btn-titulo, .titulo-tarjeta, .exito, .aviso.fiesta, .contador-num, .gr-grande, .zona-peligro h3, .btn-premio, .sello.premio {
+  font-family: var(--sans); font-weight: 600; letter-spacing: -.015em;
+}
+h1 { font-size: clamp(1.5rem, 6vw, 1.85rem); line-height: 1.15; margin: 10px 0 14px; }
+h2 { font-size: 1.25rem; }
+.exito { font-size: 1.6rem; }
+.sello.premio, .btn-premio { font-size: 1.05rem; }
+.btn-titulo { font-size: 1.35rem; }
+label { color: var(--niebla); font-weight: 600; letter-spacing: .06em; }
+.rotulo { color: var(--niebla); }
+.rotulo::before, .rotulo::after, .divisor::before, .divisor::after { background: var(--borde); opacity: 1; }
+.divisor { color: var(--naranja); margin: 10px 0; }
+.divisor i { width: 5px; height: 5px; }
+.letra-chica, .subtitulo { color: var(--niebla); opacity: .85; }
+
+/* Greca: hilo fino, discreto */
+.greca { height: 8px; opacity: .55; }
+.cabecera { margin-bottom: 8px; }
+.pie .greca { opacity: .35; }
+.cargador-greca { opacity: .6; }
+
+/* Logo sin aros ni halo */
+.marco-logo img, .marca, .caja-logo, .logo-halo img { box-shadow: none !important; }
+.logo-halo::after { display: none; }
+.logo-halo::before { border: 1px solid var(--borde); background: var(--hielo); }
+.marca { border-radius: 14px; }
+
+/* Botones: primario crema, secundario contorno; fuera el rojo terracota */
+.btn, .btn-oro, .btn-rosa, .btn-azul, .btn-premio, .btn-imprimir, #btn-entrar.btn-oro {
+  background: var(--hielo); color: var(--noche); border: 0; font-weight: 600; min-height: 52px; border-radius: 10px; box-shadow: none;
+}
+.btn:hover, .btn-oro:hover, .btn-rosa:hover, .btn-azul:hover { background: #FFFFFF; filter: none; }
+.btn-claro, .btn-fantasma, .btn-chico.btn-claro { background: transparent; color: var(--hielo); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .22); }
+.btn-claro:hover, .btn-fantasma:hover { background: var(--superficie-2); }
+.btn-peligro { background: transparent; color: var(--rosa-claro); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--alerta) 60%, transparent); }
+.btn-peligro.relleno { background: var(--alerta); color: #fff; }
+.btn:disabled, #btn-entrar:disabled { background: var(--superficie-2); color: var(--niebla); opacity: 1; box-shadow: none; filter: none; }
+.btn-con-icono::before { background: var(--noche); }
+.btn-con-icono::after { display: none; }
+.btn-premio::before { background: var(--noche); }
+.sello.premio.listo { background: var(--hielo); color: var(--noche); }
+.aviso.fiesta { background: var(--hielo); color: var(--noche); }
+.exito { background: var(--superficie); }
+
+/* Campos y tarjetas más finos */
+.campo { min-height: 56px; font-size: 1.2rem; font-weight: 600; letter-spacing: .12em; background: transparent; border-color: rgba(255, 255, 255, .18); }
+select.campo, .panel .campo { font-size: 1rem; }
+.marco, .tarjeta, .superficie, .tarjeta-mens, .panel-tabla, .vista-superficie { background: rgba(255, 255, 255, .03); border-color: rgba(255, 255, 255, .08); border-radius: 14px; }
+.aviso, .error, .tablilla { background: rgba(255, 255, 255, .05); box-shadow: none; border: 1px solid rgba(255, 255, 255, .08); }
+.aviso::before, .error::before, .tablilla::before { display: none; }
+.error { border-color: color-mix(in srgb, var(--alerta) 55%, transparent); }
+#msg.aviso, #msg.error { box-shadow: none; }
+
+/* Menú inferior: más ligero */
+.nav-flotante { background: rgba(3, 33, 26, .94); border-radius: 18px; box-shadow: 0 0 0 1px rgba(255, 255, 255, .08); }
+.nav-item { color: var(--niebla); font-weight: 500; }
+.nav-item.activo, .nav-item[aria-current="page"] { background: rgba(255, 255, 255, .08); color: var(--hielo); }
+
+/* Insignias y segmentos con el mismo lenguaje */
+.insignia, .insignia.oro, .insignia.jade, .insignia.terra, .acciones #btn-venta-q, .acciones #btn-canje { --insignia: rgba(255, 255, 255, .08); background: rgba(255, 255, 255, .08); color: var(--naranja-claro); }
+.acciones #btn-panel, .acciones #btn-control { --insignia: rgba(255, 255, 255, .08); }
+.seg-op[aria-pressed="true"] { background: var(--hielo); color: var(--noche); }
+.panel-tabla th { color: var(--niebla); font-weight: 600; letter-spacing: .04em; background: transparent; box-shadow: inset 0 -1px 0 var(--borde); }
+.panel-tabla th:first-child { background: var(--selva); }
+.panel-tabla tbody tr:nth-child(even) td { background: transparent; }
+.panel-tabla tbody tr:nth-child(even) td:first-child { background: var(--selva); }
+.cuenta, .codigo { color: var(--hielo); font-weight: 600; }
+.sello.premio { color: var(--hielo); }
+#codigo.campo { border: 1px solid rgba(255, 255, 255, .18); }
+.marco-logo img { border: 0; border-radius: 12px; }
